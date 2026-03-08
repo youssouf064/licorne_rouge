@@ -4,27 +4,24 @@ from datetime import datetime
 from flask_bcrypt import Bcrypt
 import os
 from werkzeug.utils import secure_filename
-import os
 
-UPLOAD_FOLDER = "static/images"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-if not os.path.exists("database.db"):
-    open("database.db", "w").close()
-
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-if not os.path.exists("database.db"):
-open("database.db", "w").close()
 app = Flask(__name__)
 app.secret_key = "secret123"
 bcrypt = Bcrypt(app)
 
 UPLOAD_FOLDER = "static/images"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
+# ---------------- DATABASE ----------------
 def get_db():
-    def init_db():
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
     con = sqlite3.connect("database.db")
 
     con.execute("""
@@ -76,11 +73,24 @@ def get_db():
     )
     """)
 
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS followers(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        follower_id INTEGER,
+        following_id INTEGER
+    )
+    """)
+
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS notifications(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        message TEXT
+    )
+    """)
+
     con.commit()
     con.close()
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 # ---------------- HOME ----------------
@@ -91,80 +101,79 @@ def index():
 
     con = get_db()
 
-    posts_rows = con.execute("""
+    posts = con.execute("""
         SELECT posts.*, users.username, users.profile_pic,
-               (SELECT COUNT(*) FROM likes WHERE post_id = posts.id) AS like_count
+        (SELECT COUNT(*) FROM likes WHERE post_id = posts.id) AS like_count
         FROM posts
         JOIN users ON posts.user_id = users.id
         ORDER BY posts.id DESC
     """).fetchall()
 
-    comments_rows = con.execute("""
+    comments = con.execute("""
         SELECT comments.*, users.username
         FROM comments
         JOIN users ON comments.user_id = users.id
-        ORDER BY comments.id ASC
     """).fetchall()
 
-    # Convertir posts et commentaires en dictionnaires modifiables
-    comments_dict = {}
-    for c in comments_rows:
-        c_dict = dict(c)
-        comments_dict.setdefault(c_dict["post_id"], []).append(c_dict)
-
-    posts = []
-    for p in posts_rows:
-        p_dict = dict(p)
-        p_dict["comments"] = comments_dict.get(p_dict["id"], [])
-        posts.append(p_dict)
-
-    return render_template("index.html", posts=posts)
+    return render_template("index.html", posts=posts, comments=comments)
 
 
 # ---------------- REGISTER ----------------
-@app.route("/register", methods=["GET", "POST"])
+@app.route("/register", methods=["GET","POST"])
 def register():
     if request.method == "POST":
+
         username = request.form["username"]
         email = request.form["email"]
         password = bcrypt.generate_password_hash(request.form["password"]).decode("utf-8")
 
         profile_pic = request.files.get("profile_pic")
         filename = None
+
         if profile_pic and profile_pic.filename != "":
             filename = secure_filename(profile_pic.filename)
             profile_pic.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
 
         con = get_db()
+
         con.execute(
-            "INSERT INTO users(username,email,password,profile_pic,online) VALUES(?,?,?,?,?)",
-            (username, email, password, filename, 1)
+            "INSERT INTO users(username,email,password,profile_pic) VALUES(?,?,?,?)",
+            (username,email,password,filename)
         )
+
         con.commit()
+
         return redirect("/login")
 
     return render_template("register.html")
 
 
 # ---------------- LOGIN ----------------
-@app.route("/login", methods=["GET", "POST"])
+@app.route("/login", methods=["GET","POST"])
 def login():
+
     if request.method == "POST":
+
         email = request.form["email"]
         password = request.form["password"]
 
         con = get_db()
-        user = con.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+
+        user = con.execute(
+            "SELECT * FROM users WHERE email=?",
+            (email,)
+        ).fetchone()
 
         if user and bcrypt.check_password_hash(user["password"], password):
+
             session["user_id"] = user["id"]
             session["username"] = user["username"]
 
-            # Mettre en ligne l'utilisateur
             con.execute("UPDATE users SET online=1 WHERE id=?", (user["id"],))
             con.commit()
 
             return redirect("/")
+
         else:
             return "Email ou mot de passe incorrect"
 
@@ -174,190 +183,170 @@ def login():
 # ---------------- LOGOUT ----------------
 @app.route("/logout")
 def logout():
+
     if "user_id" in session:
         con = get_db()
         con.execute("UPDATE users SET online=0 WHERE id=?", (session["user_id"],))
         con.commit()
+
     session.clear()
+
     return redirect("/")
 
 
 # ---------------- CREATE POST ----------------
 @app.route("/create_post", methods=["POST"])
 def create_post():
+
     if "user_id" not in session:
         return redirect("/login")
 
     content = request.form["content"]
+
     image = request.files.get("image")
+
     filename = None
+
     if image and image.filename != "":
         filename = secure_filename(image.filename)
         image.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
 
     con = get_db()
+
     con.execute(
         "INSERT INTO posts(user_id,content,image,date) VALUES(?,?,?,?)",
-        (session["user_id"], content, filename, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        (session["user_id"],content,filename,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     )
+
     con.commit()
+
     return redirect("/")
 
 
 # ---------------- LIKE ----------------
 @app.route("/like/<int:post_id>")
 def like(post_id):
+
     if "user_id" not in session:
         return redirect("/login")
 
     con = get_db()
-    con.execute("INSERT INTO likes(user_id,post_id) VALUES(?,?)", (session["user_id"], post_id))
 
-    post_owner = con.execute("SELECT user_id FROM posts WHERE id=?", (post_id,)).fetchone()
-    if post_owner:
-        con.execute("INSERT INTO notifications(user_id,message) VALUES(?,?)",
-                    (post_owner["user_id"], "Quelqu'un a aimé votre publication"))
+    con.execute(
+        "INSERT INTO likes(user_id,post_id) VALUES(?,?)",
+        (session["user_id"],post_id)
+    )
+
     con.commit()
+
     return redirect("/")
 
 
 # ---------------- COMMENT ----------------
 @app.route("/comment/<int:post_id>", methods=["POST"])
 def comment(post_id):
+
     if "user_id" not in session:
         return redirect("/login")
 
     content = request.form["content"]
+
     con = get_db()
+
     con.execute(
         "INSERT INTO comments(user_id,post_id,content,date) VALUES(?,?,?,?)",
-        (session["user_id"], post_id, content, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        (session["user_id"],post_id,content,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     )
+
     con.commit()
+
     return redirect("/")
-
-
-# ---------------- FOLLOW ----------------
-@app.route("/follow/<int:user_id>")
-def follow(user_id):
-    if "user_id" not in session:
-        return redirect("/login")
-
-    con = get_db()
-    con.execute("INSERT INTO followers(follower_id,following_id) VALUES(?,?)", (session["user_id"], user_id))
-    con.commit()
-    return redirect("/")
-
-
-# ---------------- FOLLOWING LIST ----------------
-@app.route("/following")
-def following():
-    if "user_id" not in session:
-        return redirect("/login")
-
-    con = get_db()
-    users = con.execute("""
-        SELECT users.*
-        FROM followers
-        JOIN users ON followers.following_id = users.id
-        WHERE followers.follower_id = ?
-    """, (session["user_id"],)).fetchall()
-
-    return render_template("following.html", users=users)
 
 
 # ---------------- MESSAGES ----------------
 @app.route("/messages/<int:user_id>", methods=["GET","POST"])
 def messages(user_id):
+
     if "user_id" not in session:
         return redirect("/login")
 
     con = get_db()
 
-    # Envoi du message
     if request.method == "POST":
+
         content = request.form["content"]
+
         con.execute(
             "INSERT INTO messages(sender_id,receiver_id,content,date) VALUES(?,?,?,?)",
-            (session["user_id"], user_id, content, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            (session["user_id"],user_id,content,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         )
+
         con.commit()
 
-    # Affichage de la conversation
     msgs = con.execute("""
-        SELECT messages.*, u1.username as sender_name, u2.username as receiver_name
+        SELECT messages.*, users.username
         FROM messages
-        JOIN users u1 ON messages.sender_id = u1.id
-        JOIN users u2 ON messages.receiver_id = u2.id
-        WHERE (sender_id=? AND receiver_id=?) OR (sender_id=? AND receiver_id=?)
-        ORDER BY date
-    """, (session["user_id"], user_id, user_id, session["user_id"])).fetchall()
+        JOIN users ON messages.sender_id = users.id
+        WHERE (sender_id=? AND receiver_id=?)
+        OR (sender_id=? AND receiver_id=?)
+        ORDER BY id
+    """,(session["user_id"],user_id,user_id,session["user_id"])).fetchall()
 
-    # Récupérer le nom de l'autre utilisateur pour l'afficher en haut
-    other_user = con.execute("SELECT id, username FROM users WHERE id=?", (user_id,)).fetchone()
+    return render_template("messages.html",msgs=msgs,user_id=user_id)
 
-    return render_template("messages.html", msgs=msgs, user_id=user_id, other_user=other_user)
 
-# ---------------- conversations --------------
+# ---------------- CONVERSATIONS ----------------
 @app.route("/conversations")
 def conversations():
+
     if "user_id" not in session:
         return redirect("/login")
 
     con = get_db()
 
-    # Liste des utilisateurs à qui tu peux envoyer des messages
     users = con.execute("""
-        SELECT id, username, profile_pic
-        FROM users
-        WHERE id != ?
-    """, (session["user_id"],)).fetchall()
+    SELECT id,username,profile_pic
+    FROM users
+    WHERE id != ?
+    """,(session["user_id"],)).fetchall()
 
-    return render_template("conversations.html", users=users)
-    
+    return render_template("conversations.html",users=users)
+
+
 # ---------------- PROFILE ----------------
 @app.route("/profile/<int:user_id>")
 def profile(user_id):
+
     if "user_id" not in session:
         return redirect("/login")
 
     con = get_db()
-    user = con.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
-    if not user:
-        return "Utilisateur non trouvé", 404
 
-    posts_rows = con.execute("""
-        SELECT posts.*, (SELECT COUNT(*) FROM likes WHERE post_id = posts.id) AS like_count
-        FROM posts WHERE user_id=?
-        ORDER BY id DESC
-    """, (user_id,)).fetchall()
+    user = con.execute("SELECT * FROM users WHERE id=?",(user_id,)).fetchone()
 
-    posts = []
-    for p in posts_rows:
-        post_dict = dict(p)
-        post_comments = con.execute("""
-            SELECT comments.*, users.username
-            FROM comments
-            JOIN users ON comments.user_id = users.id
-            WHERE post_id=?
-            ORDER BY id ASC
-        """, (p["id"],)).fetchall()
-        post_dict["comments"] = [dict(c) for c in post_comments]
-        posts.append(post_dict)
+    posts = con.execute(
+        "SELECT * FROM posts WHERE user_id=? ORDER BY id DESC",
+        (user_id,)
+    ).fetchall()
 
-    return render_template("profile.html", user=user, posts=posts)
+    return render_template("profile.html",user=user,posts=posts)
 
 
 # ---------------- NOTIFICATIONS ----------------
 @app.route("/notifications")
 def notifications():
+
     if "user_id" not in session:
         return redirect("/login")
 
     con = get_db()
-    notes_rows = con.execute("SELECT * FROM notifications WHERE user_id=? ORDER BY id DESC", (session["user_id"],)).fetchall()
-    notes = [dict(n) for n in notes_rows]
-    return render_template("notifications.html", notes=notes)
+
+    notes = con.execute(
+        "SELECT * FROM notifications WHERE user_id=?",
+        (session["user_id"],)
+    ).fetchall()
+
+    return render_template("notifications.html",notes=notes)
 
 
 # ---------------- RUN ----------------
