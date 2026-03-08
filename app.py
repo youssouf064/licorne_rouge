@@ -24,6 +24,60 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
 def get_db():
+    def init_db():
+    con = sqlite3.connect("database.db")
+
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT,
+        email TEXT,
+        password TEXT,
+        profile_pic TEXT,
+        online INTEGER DEFAULT 0
+    )
+    """)
+
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS posts(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        content TEXT,
+        image TEXT,
+        date TEXT
+    )
+    """)
+
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS comments(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        post_id INTEGER,
+        content TEXT,
+        date TEXT
+    )
+    """)
+
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS likes(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        post_id INTEGER
+    )
+    """)
+
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS messages(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER,
+        receiver_id INTEGER,
+        content TEXT,
+        date TEXT
+    )
+    """)
+
+    con.commit()
+    con.close()
     conn = sqlite3.connect("database.db")
     conn.row_factory = sqlite3.Row
     return conn
@@ -308,4 +362,5 @@ def notifications():
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
+    init_db()
     app.run()
