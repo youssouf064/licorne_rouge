@@ -1,0 +1,68 @@
+<h1>Licorne Rouge 🦄🔴</h1>
+
+{% if session.username %}
+<p>
+Bienvenue {{session.username}} |
+<a href="/logout">Déconnexion</a> |
+<a href="/notifications">Notifications</a>
+</p>
+<link rel="stylesheet" href="/static/style.css">
+
+<form action="/create_post" method="post" enctype="multipart/form-data">
+<textarea name="content" placeholder="Quoi de neuf ?"></textarea><br>
+<input type="file" name="image"><br>
+<button>Publier</button>
+</form>
+
+{% else %}
+<a href="/login">Connexion</a> |
+<a href="/register">Inscription</a>
+{% endif %}
+
+<hr>
+
+<h2>Publications</h2>
+
+{% for post in posts %}
+
+<div style="border:1px solid #ccc; padding:10px; margin:10px;">
+
+<b>
+<a href="/profile/{{post['user_id']}}">
+{{post["username"]}}
+</a>
+</b>
+
+<p>{{post["content"]}}</p>
+
+{% if post["image"] %}
+<img src="/static/images/{{post['image']}}" width="200">
+{% endif %}
+
+<br>
+
+<a href="/like/{{post['id']}}">❤️ Like</a>
+<span>{{post["like_count"]}} likes</span>
+
+<h4>Commentaires</h4>
+
+{% for comment in comments %}
+{% if comment["post_id"] == post["id"] %}
+
+<p>
+<b>{{comment["username"]}}</b> :
+{{comment["content"]}}
+</p>
+
+{% endif %}
+{% endfor %}
+
+<form action="/comment/{{post['id']}}" method="post">
+<input type="text" name="content" placeholder="Commenter">
+<button>Envoyer</button>
+</form>
+
+</div>
+
+{% endfor %}
+

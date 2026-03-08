@@ -1,0 +1,40 @@
+<h1>Profil de {{ user["username"] }}</h1>
+
+<p>Email : {{ user["email"] }}</p>
+
+{% if user["online"] == 1 %}
+🟢 En ligne
+{% else %}
+⚪ Hors ligne
+{% endif %}
+
+{% if session.username and session.user_id != user["id"] %}
+<!-- Bouton pour démarrer la discussion avec cet utilisateur -->
+<form action="/messages/{{ user['id'] }}" method="get" style="margin-top:10px;">
+    <button type="submit">💬 Envoyer un message</button>
+</form>
+{% endif %}
+
+<a href="/">⬅ Retour accueil</a>
+
+<hr>
+
+<h2>Publications</h2>
+
+{% for post in posts %}
+<div style="border:1px solid #ccc; padding:10px; margin:10px;">
+    <p>{{ post["content"] }}</p>
+    <p><i>{{ post["date"] }}</i></p>
+    {% if post["image"] %}
+    <img src="/static/images/{{ post['image'] }}" width="200">
+    {% endif %}
+
+    {% if post["comments"] %}
+    <h4>Commentaires :</h4>
+    {% for comment in post["comments"] %}
+        <p><b>{{ comment["username"] }}</b> : {{ comment["content"] }}</p>
+    {% endfor %}
+    {% endif %}
+{% else %}
+<p>Aucune publication</p>
+{% endfor %}

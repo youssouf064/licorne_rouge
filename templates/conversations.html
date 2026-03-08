@@ -1,0 +1,13 @@
+<h1>💬 Conversations</h1>
+<a href="/">⬅ Retour</a>
+<hr>
+
+<ul>
+{% for user in users %}
+<li>
+    <img src="/static/images/{{ user['profile_pic'] or 'default.png' }}" width="50">
+    {{ user['username'] }}
+    <a href="/messages/{{ user['id'] }}"><button>Message</button></a>
+</li>
+{% endfor %}
+</ul>

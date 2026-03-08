@@ -1,0 +1,9 @@
+<h1>Personnes suivies</h1>
+
+{% for user in users %}
+<p>
+<a href="/profile/{{user['id']}}">
+{{user["username"]}}
+</a>
+</p>
+{% endfor %}

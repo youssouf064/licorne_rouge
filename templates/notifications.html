@@ -1,0 +1,19 @@
+<h1>🔔 Notifications</h1>
+
+<a href="/">⬅ Retour accueil</a>
+
+<hr>
+
+{% for note in notes %}
+
+<p>{{note["message"]}}</p>
+
+<hr>
+
+{% else %}
+
+<p>Aucune notification</p>
+
+
+{% endfor %}
+
