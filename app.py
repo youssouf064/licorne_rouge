@@ -4,7 +4,17 @@ from datetime import datetime
 from flask_bcrypt import Bcrypt
 import os
 from werkzeug.utils import secure_filename
+import os
 
+UPLOAD_FOLDER = "static/images"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+if not os.path.exists("database.db"):
+    open("database.db", "w").close()
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+if not os.path.exists("database.db"):
+open("database.db", "w").close()
 app = Flask(__name__)
 app.secret_key = "secret123"
 bcrypt = Bcrypt(app)
@@ -298,4 +308,4 @@ def notifications():
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
