@@ -115,17 +115,22 @@ def index():
         JOIN users ON comments.user_id = users.id
     """).fetchall()
 
+    con.close()
+
     return render_template("index.html", posts=posts, comments=comments)
 
 
 # ---------------- REGISTER ----------------
 @app.route("/register", methods=["GET","POST"])
 def register():
+
     if request.method == "POST":
 
         username = request.form["username"]
         email = request.form["email"]
-        password = bcrypt.generate_password_hash(request.form["password"]).decode("utf-8")
+        password = bcrypt.generate_password_hash(
+            request.form["password"]
+        ).decode("utf-8")
 
         profile_pic = request.files.get("profile_pic")
         filename = None
@@ -142,6 +147,7 @@ def register():
         )
 
         con.commit()
+        con.close()
 
         return redirect("/login")
 
@@ -169,8 +175,13 @@ def login():
             session["user_id"] = user["id"]
             session["username"] = user["username"]
 
-            con.execute("UPDATE users SET online=1 WHERE id=?", (user["id"],))
+            con.execute(
+                "UPDATE users SET online=1 WHERE id=?",
+                (user["id"],)
+            )
+
             con.commit()
+            con.close()
 
             return redirect("/")
 
@@ -185,171 +196,24 @@ def login():
 def logout():
 
     if "user_id" in session:
+
         con = get_db()
-        con.execute("UPDATE users SET online=0 WHERE id=?", (session["user_id"],))
+
+        con.execute(
+            "UPDATE users SET online=0 WHERE id=?",
+            (session["user_id"],)
+        )
+
         con.commit()
+        con.close()
 
     session.clear()
 
     return redirect("/")
 
 
-# ---------------- CREATE POST ----------------
-@app.route("/create_post", methods=["POST"])
-def create_post():
-
-    if "user_id" not in session:
-        return redirect("/login")
-
-    content = request.form["content"]
-
-    image = request.files.get("image")
-
-    filename = None
-
-    if image and image.filename != "":
-        filename = secure_filename(image.filename)
-        image.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-
-    con = get_db()
-
-    con.execute(
-        "INSERT INTO posts(user_id,content,image,date) VALUES(?,?,?,?)",
-        (session["user_id"],content,filename,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    )
-
-    con.commit()
-
-    return redirect("/")
-
-
-# ---------------- LIKE ----------------
-@app.route("/like/<int:post_id>")
-def like(post_id):
-
-    if "user_id" not in session:
-        return redirect("/login")
-
-    con = get_db()
-
-    con.execute(
-        "INSERT INTO likes(user_id,post_id) VALUES(?,?)",
-        (session["user_id"],post_id)
-    )
-
-    con.commit()
-
-    return redirect("/")
-
-
-# ---------------- COMMENT ----------------
-@app.route("/comment/<int:post_id>", methods=["POST"])
-def comment(post_id):
-
-    if "user_id" not in session:
-        return redirect("/login")
-
-    content = request.form["content"]
-
-    con = get_db()
-
-    con.execute(
-        "INSERT INTO comments(user_id,post_id,content,date) VALUES(?,?,?,?)",
-        (session["user_id"],post_id,content,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    )
-
-    con.commit()
-
-    return redirect("/")
-
-
-# ---------------- MESSAGES ----------------
-@app.route("/messages/<int:user_id>", methods=["GET","POST"])
-def messages(user_id):
-
-    if "user_id" not in session:
-        return redirect("/login")
-
-    con = get_db()
-
-    if request.method == "POST":
-
-        content = request.form["content"]
-
-        con.execute(
-            "INSERT INTO messages(sender_id,receiver_id,content,date) VALUES(?,?,?,?)",
-            (session["user_id"],user_id,content,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        )
-
-        con.commit()
-
-    msgs = con.execute("""
-        SELECT messages.*, users.username
-        FROM messages
-        JOIN users ON messages.sender_id = users.id
-        WHERE (sender_id=? AND receiver_id=?)
-        OR (sender_id=? AND receiver_id=?)
-        ORDER BY id
-    """,(session["user_id"],user_id,user_id,session["user_id"])).fetchall()
-
-    return render_template("messages.html",msgs=msgs,user_id=user_id)
-
-
-# ---------------- CONVERSATIONS ----------------
-@app.route("/conversations")
-def conversations():
-
-    if "user_id" not in session:
-        return redirect("/login")
-
-    con = get_db()
-
-    users = con.execute("""
-    SELECT id,username,profile_pic
-    FROM users
-    WHERE id != ?
-    """,(session["user_id"],)).fetchall()
-
-    return render_template("conversations.html",users=users)
-
-
-# ---------------- PROFILE ----------------
-@app.route("/profile/<int:user_id>")
-def profile(user_id):
-
-    if "user_id" not in session:
-        return redirect("/login")
-
-    con = get_db()
-
-    user = con.execute("SELECT * FROM users WHERE id=?",(user_id,)).fetchone()
-
-    posts = con.execute(
-        "SELECT * FROM posts WHERE user_id=? ORDER BY id DESC",
-        (user_id,)
-    ).fetchall()
-
-    return render_template("profile.html",user=user,posts=posts)
-
-
-# ---------------- NOTIFICATIONS ----------------
-@app.route("/notifications")
-def notifications():
-
-    if "user_id" not in session:
-        return redirect("/login")
-
-    con = get_db()
-
-    notes = con.execute(
-        "SELECT * FROM notifications WHERE user_id=?",
-        (session["user_id"],)
-    ).fetchall()
-
-    return render_template("notifications.html",notes=notes)
-
-
 # ---------------- RUN ----------------
 if __name__ == "__main__":
     init_db()
-    app.run()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
