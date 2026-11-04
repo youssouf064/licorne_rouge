@@ -1,0 +1,371 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Licorne Rouge - Actualité</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        .avatar-img {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #eee;
+        }
+
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .post-author a {
+            color: #222;
+            text-decoration: none;
+        }
+
+        .post-author small {
+            display: block;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .post-image {
+            width: 100%;
+            max-height: 550px;
+            object-fit: contain;
+            border-radius: 10px;
+            margin-top: 12px;
+            background: #f5f5f5;
+        }
+
+        .post-content {
+            line-height: 1.6;
+            overflow-wrap: anywhere;
+            margin: 15px 0;
+        }
+
+        .post-stats {
+            padding: 12px 0;
+            color: #777;
+            border-bottom: 1px solid #eee;
+        }
+
+        .post-actions {
+            display: flex;
+            justify-content: space-around;
+            gap: 8px;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .post-actions a {
+            text-decoration: none;
+            color: #555;
+            font-weight: bold;
+            padding: 8px;
+            border-radius: 7px;
+        }
+
+        .post-actions a:hover {
+            background: #f5e7e9;
+            color: #d92335;
+        }
+
+        .comments {
+            padding-top: 10px;
+        }
+
+        .comment-item {
+            background: #f3f4f6;
+            padding: 10px 14px;
+            border-radius: 12px;
+            margin: 8px 0;
+            overflow-wrap: anywhere;
+        }
+
+        .comment-item strong {
+            color: #d92335;
+            margin-right: 5px;
+        }
+
+        .comment-form {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .comment-form input {
+            flex: 1;
+            min-width: 0;
+            padding: 11px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+        }
+
+        .comment-form button {
+            border: none;
+            background: #d92335;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .composer-heading {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .photo-label {
+            cursor: pointer;
+        }
+
+        .photo-label input {
+            max-width: 180px;
+        }
+
+        .welcome h2 {
+            margin-bottom: 5px;
+        }
+
+        @media(max-width: 600px) {
+            .post-actions a {
+                font-size: 13px;
+                padding: 6px 3px;
+            }
+
+            .comment-form {
+                flex-wrap: wrap;
+            }
+
+            .comment-form button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="topbar">
+    <a href="/" class="brand">🦄 Licorne<span>Rouge</span></a>
+
+    <form action="/search" method="get" class="search">
+        <input type="search" name="q"
+               placeholder="Rechercher sur Licorne Rouge...">
+    </form>
+
+    <nav class="top-actions">
+        <a href="/" title="Accueil">🏠</a>
+        <a href="/conversations" title="Messages">💬</a>
+        <a href="/notifications" title="Notifications">🔔</a>
+        <a href="/profile/{{ session.user_id }}" title="Mon profil">👤</a>
+    </nav>
+</header>
+
+<div class="layout">
+
+    <aside class="sidebar">
+
+        <div class="user-mini">
+            {% if current_user and current_user['profile_pic'] %}
+                <img class="avatar-img"
+                     src="{{ url_for('static', filename='images/' + current_user['profile_pic']) }}"
+                     alt="Profil">
+            {% else %}
+                <div class="avatar">👤</div>
+            {% endif %}
+
+            <div>
+                <strong>{{ session.username }}</strong>
+                <small>Membre de Licorne Rouge</small>
+            </div>
+        </div>
+
+        <a class="menu-link active" href="/">🏠 Fil d'actualité</a>
+        <a class="menu-link" href="/profile/{{ session.user_id }}">👤 Mon profil</a>
+        <a class="menu-link" href="/following">🤝 Abonnements</a>
+        <a class="menu-link" href="/conversations">💬 Messagerie</a>
+        <a class="menu-link" href="/notifications">🔔 Notifications</a>
+
+        <div class="sidebar-title">COMMUNAUTÉ</div>
+        <a class="menu-link" href="/groups">👥 Groupes</a>
+        <a class="menu-link" href="/pages">🏢 Pages</a>
+        <a class="menu-link" href="/marketplace">🛍️ Marketplace</a>
+
+        <div class="sidebar-title">MON COMPTE</div>
+        <a class="menu-link logout" href="/logout">🚪 Déconnexion</a>
+
+        <div class="sidebar-footer">
+            <strong>Licorne Rouge 🦄</strong>
+            <p>Le réseau qui rapproche les Mauritaniens.</p>
+            <small>© 2026 Licorne Rouge</small>
+        </div>
+
+    </aside>
+
+    <main class="feed">
+
+        <div class="welcome">
+            <h2>Bonjour {{ session.username }} 👋</h2>
+            <p>Quoi de neuf aujourd'hui en Mauritanie ?</p>
+        </div>
+
+        <!-- Création de publication -->
+        <section class="composer">
+
+            <div class="composer-heading">
+                {% if current_user and current_user['profile_pic'] %}
+                    <img class="avatar-img"
+                         src="{{ url_for('static', filename='images/' + current_user['profile_pic']) }}"
+                         alt="Profil">
+                {% else %}
+                    <div class="avatar">👤</div>
+                {% endif %}
+
+                <strong>{{ session.username }}</strong>
+            </div>
+
+            <form action="/create_post" method="post"
+                  enctype="multipart/form-data">
+
+                <textarea name="content"
+                    placeholder="Quoi de neuf ? Partage avec la communauté..."
+                    rows="3"></textarea>
+
+                <div class="composer-bottom">
+                    <label class="photo-label">
+                        📷 Ajouter une photo
+                        <input type="file" name="image" accept="image/*">
+                    </label>
+
+                    <button type="submit" class="publish-btn">
+                        Publier
+                    </button>
+                </div>
+
+            </form>
+        </section>
+
+        <div class="feed-heading">
+            <h3>Fil d'actualité</h3>
+            <span>Les dernières publications</span>
+        </div>
+
+        {% for post in posts %}
+
+        <article class="post">
+
+            <div class="post-header">
+
+                {% if post['profile_pic'] %}
+                    <img class="avatar-img"
+                         src="{{ url_for('static', filename='images/' + post['profile_pic']) }}"
+                         alt="Photo de {{ post['username'] }}">
+                {% else %}
+                    <div class="avatar">👤</div>
+                {% endif %}
+
+                <div class="post-author">
+                    <a href="/profile/{{ post['user_id'] }}">
+                        <strong>{{ post['username'] }}</strong>
+                    </a>
+                    <small>{{ post['date'] }}</small>
+                </div>
+
+            </div>
+
+            {% if post['content'] %}
+                <p class="post-content">{{ post['content'] }}</p>
+            {% endif %}
+
+            {% if post['image'] %}
+                <img class="post-image"
+                     src="{{ url_for('static', filename='images/' + post['image']) }}"
+                     alt="Publication de {{ post['username'] }}">
+            {% endif %}
+
+            <div class="post-stats">
+                ❤️ {{ post['like_count'] }} J'aime
+            </div>
+
+            <div class="post-actions">
+                <a href="/like/{{ post['id'] }}">❤️ J'aime</a>
+                <a href="#comment-{{ post['id'] }}">💬 Commenter</a>
+                <a href="/profile/{{ post['user_id'] }}">👤 Profil</a>
+            </div>
+
+            <div class="comments">
+
+                {% for comment in comments %}
+                    {% if comment['post_id'] == post['id'] %}
+
+                        <div class="comment-item">
+                            <strong>{{ comment['username'] }}</strong>
+                            {{ comment['content'] }}
+                        </div>
+
+                    {% endif %}
+                {% endfor %}
+
+            </div>
+
+            <form id="comment-{{ post['id'] }}"
+                  class="comment-form"
+                  action="/comment/{{ post['id'] }}"
+                  method="post">
+
+                <input type="text" name="content"
+                       placeholder="Écrire un commentaire..."
+                       required>
+
+                <button type="submit">Envoyer</button>
+
+            </form>
+
+        </article>
+
+        {% else %}
+
+        <div class="empty-feed">
+            <div>🌍</div>
+            <h3>Bienvenue dans la communauté !</h3>
+            <p>Sois le premier à partager une publication.</p>
+        </div>
+
+        {% endfor %}
+
+    </main>
+
+    <aside class="rightbar">
+
+        <div class="side-card">
+            <h3>🇲🇷 La communauté</h3>
+            <p>Bienvenue sur le réseau social des Mauritaniens.</p>
+            <p>Partage, découvre et échange avec les autres membres.</p>
+        </div>
+
+        <div class="side-card">
+            <h3>🌟 Nos espaces</h3>
+            <a href="/groups">Découvrir les groupes</a>
+            <a href="/pages">Découvrir les pages</a>
+            <a href="/marketplace">Voir la Marketplace</a>
+        </div>
+
+        <div class="side-card">
+            <h3>💡 Notre ambition</h3>
+            <p>Rapprocher les personnes, les cultures et les entreprises de Mauritanie.</p>
+        </div>
+
+    </aside>
+
+</div>
+
+</body>
+</html>

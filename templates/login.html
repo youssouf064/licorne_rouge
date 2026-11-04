@@ -1,7 +1,214 @@
-<h1>Connexion</h1>
-<form method="post">
-<input type="email" name="email" placeholder="Email" required><br>
-<input type="password" name="password" placeholder="Mot de passe" required><br>
-<button>Connexion</button>
-</form>
-<a href="/register">Pas encore inscrit ?</a>
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Connexion - Licorne Rouge</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #f1f2f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 950px;
+            min-height: 520px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 12px 40px rgba(0,0,0,.10);
+        }
+
+        .auth-brand {
+            background: linear-gradient(145deg, #c9142c, #ed3548);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 45px;
+        }
+
+        .logo {
+            font-size: 65px;
+            margin-bottom: 15px;
+        }
+
+        .auth-brand h1 {
+            font-size: 35px;
+            margin: 0 0 15px;
+        }
+
+        .auth-brand p {
+            font-size: 17px;
+            line-height: 1.7;
+        }
+
+        .auth-form {
+            padding: 55px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .auth-form h2 {
+            font-size: 29px;
+            color: #222;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #777;
+            margin-bottom: 30px;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 9px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .field input:focus {
+            border-color: #d92335;
+            box-shadow: 0 0 0 3px rgba(217,35,53,.10);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: #d92335;
+            color: white;
+            border: none;
+            border-radius: 9px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .submit-btn:hover {
+            background: #b9162b;
+        }
+
+        .auth-link {
+            text-align: center;
+            margin-top: 25px;
+            color: #666;
+        }
+
+        .auth-link a {
+            color: #d92335;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .flash-message {
+            padding: 12px;
+            background: #fff0f1;
+            color: #bd1e32;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        @media(max-width: 700px) {
+            .auth-container {
+                grid-template-columns: 1fr;
+                max-width: 430px;
+            }
+
+            .auth-brand {
+                padding: 28px 20px;
+            }
+
+            .auth-brand h1 { font-size: 27px; }
+            .auth-brand p { font-size: 14px; }
+            .logo { font-size: 45px; }
+
+            .auth-form { padding: 35px 25px; }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="auth-container">
+
+    <div class="auth-brand">
+        <div class="logo">🦄</div>
+        <h1>Licorne Rouge</h1>
+        <p>
+            Bienvenue dans votre réseau social mauritanien.
+            Connectez-vous avec vos amis, partagez vos idées
+            et découvrez votre communauté.
+        </p>
+    </div>
+
+    <div class="auth-form">
+        <h2>Bon retour !</h2>
+        <p class="subtitle">Connectez-vous à votre compte.</p>
+
+        {% with messages = get_flashed_messages() %}
+            {% for message in messages %}
+                <div class="flash-message">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('login') }}">
+
+            <div class="field">
+                <label>Adresse e-mail</label>
+                <input type="email" name="email"
+                       placeholder="exemple@email.com" required>
+            </div>
+
+            <div class="field">
+                <label>Mot de passe</label>
+                <input type="password" name="password"
+                       placeholder="Votre mot de passe" required>
+            </div>
+
+            <button class="submit-btn" type="submit">
+                Se connecter
+            </button>
+        </form>
+
+        <div class="auth-link">
+            Pas encore membre ?
+            <a href="{{ url_for('register') }}">Créer un compte</a>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
+

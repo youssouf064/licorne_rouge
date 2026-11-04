@@ -1,13 +1,211 @@
-<h1>💬 Conversations</h1>
-<a href="/">⬅ Retour</a>
-<hr>
 
-<ul>
-{% for user in users %}
-<li>
-    <img src="/static/images/{{ user['profile_pic'] or 'default.png' }}" width="50">
-    {{ user['username'] }}
-    <a href="/messages/{{ user['id'] }}"><button>Message</button></a>
-</li>
-{% endfor %}
-</ul>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Conversations - Licorne Rouge</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #f4f5f7;
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+
+        .navbar {
+            background: white;
+            padding: 15px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,.08);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logo {
+            color: #d62936;
+            font-size: 23px;
+            font-weight: bold;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .badge {
+            background: #d62936;
+            color: white;
+            border-radius: 20px;
+            padding: 3px 7px;
+            font-size: 11px;
+        }
+
+        .container {
+            max-width: 750px;
+            margin: 35px auto;
+            padding: 20px;
+        }
+
+        .heading {
+            margin-bottom: 20px;
+        }
+
+        .heading h1 {
+            color: #d62936;
+            margin-bottom: 8px;
+        }
+
+        .conversation-list {
+            background: white;
+            border-radius: 14px;
+            padding: 10px 20px;
+            box-shadow: 0 3px 12px rgba(0,0,0,.06);
+        }
+
+        .user-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .user-item:last-child {
+            border-bottom: none;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-info img {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #eee;
+        }
+
+        .username {
+            font-weight: bold;
+        }
+
+        .message-btn {
+            background: #d62936;
+            color: white;
+            padding: 10px 17px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .message-btn:hover {
+            background: #b51f2b;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 35px 10px;
+            color: #777;
+        }
+
+        @media(max-width: 480px) {
+            .navbar {
+                justify-content: center;
+            }
+
+            .user-item {
+                flex-wrap: wrap;
+            }
+
+            .message-btn {
+                margin-left: 67px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar">
+    <div class="logo">❤️ Licorne Rouge</div>
+
+    <div class="nav-links">
+        <a href="/">🏠 Accueil</a>
+
+        <a href="/notifications">
+            🔔 Notifications
+            {% if unread_count > 0 %}
+                <span class="badge">{{ unread_count }}</span>
+            {% endif %}
+        </a>
+
+        <a href="/conversations">
+            💬 Messages
+            {% if unread_messages > 0 %}
+                <span class="badge">{{ unread_messages }}</span>
+            {% endif %}
+        </a>
+    </div>
+</nav>
+
+<div class="container">
+
+    <div class="heading">
+        <h1>💬 Conversations</h1>
+        <p>Retrouve les membres et échange avec eux en privé.</p>
+    </div>
+
+    <div class="conversation-list">
+
+        {% for user in users %}
+        <div class="user-item">
+
+            <div class="user-info">
+                <img
+                    src="{{ url_for('static', filename='images/' + (user['profile_pic'] or 'default.png')) }}"
+                    alt="Photo de profil"
+                >
+
+                <div class="username">
+                    {{ user['username'] }}
+                </div>
+            </div>
+
+            <a class="message-btn"
+               href="/messages/{{ user['id'] }}">
+                💬 Message
+            </a>
+
+        </div>
+        {% else %}
+        <div class="empty">
+            <h3>Aucun membre disponible</h3>
+            <p>Les membres apparaîtront ici.</p>
+        </div>
+        {% endfor %}
+
+    </div>
+
+</div>
+
+</body>
+</html>

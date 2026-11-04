@@ -1,218 +1,951 @@
-from flask import Flask, render_template, request, redirect, session
-import sqlite3
-from datetime import datetime
-from flask_bcrypt import Bcrypt
+
 import os
+import sqlite3
+import uuid
+from functools import wraps
+from datetime import datetime
+
+from flask import (
+    Flask, render_template, request, redirect,
+    session, url_for, jsonify
+)
+from flask_bcrypt import Bcrypt
 from werkzeug.utils import secure_filename
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "database.db")
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "images")
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 app = Flask(__name__)
-app.secret_key = "secret123"
+app.secret_key = os.environ.get("SECRET_KEY", "dev-key-change-me")
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+
 bcrypt = Bcrypt(app)
 
-UPLOAD_FOLDER = "static/images"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 
-# ---------------- DATABASE ----------------
 def get_db():
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    return conn
+    con = sqlite3.connect(DB_PATH)
+    con.row_factory = sqlite3.Row
+    return con
 
+@app.context_processor
+def inject_unread_counts():
+
+    if "user_id" not in session:
+        return {
+            "unread_count": 0,
+            "unread_messages": 0
+        }
+
+    con = get_db()
+
+    try:
+        unread_count = con.execute("""
+            SELECT COUNT(*)
+            FROM notifications
+            WHERE user_id = ? AND is_read = 0
+        """, (session["user_id"],)).fetchone()[0]
+
+        unread_messages = con.execute("""
+            SELECT COUNT(*)
+            FROM messages
+            WHERE receiver_id = ? AND is_read = 0
+        """, (session["user_id"],)).fetchone()[0]
+
+    finally:
+        con.close()
+
+    return {
+        "unread_count": unread_count,
+        "unread_messages": unread_messages
+    }
 
 def init_db():
-    con = sqlite3.connect("database.db")
+    con = get_db()
 
-    con.execute("""
-    CREATE TABLE IF NOT EXISTS users(
+    con.executescript("""
+    CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT,
         email TEXT,
         password TEXT,
         profile_pic TEXT,
         online INTEGER DEFAULT 0
-    )
-    """)
+    );
 
-    con.execute("""
-    CREATE TABLE IF NOT EXISTS posts(
+    CREATE TABLE IF NOT EXISTS posts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         content TEXT,
         image TEXT,
         date TEXT
-    )
-    """)
+    );
 
-    con.execute("""
-    CREATE TABLE IF NOT EXISTS comments(
+    CREATE TABLE IF NOT EXISTS comments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         post_id INTEGER,
         content TEXT,
         date TEXT
-    )
-    """)
+    );
 
-    con.execute("""
-    CREATE TABLE IF NOT EXISTS likes(
+    CREATE TABLE IF NOT EXISTS likes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         post_id INTEGER
-    )
-    """)
+    );
 
-    con.execute("""
-    CREATE TABLE IF NOT EXISTS messages(
+    CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sender_id INTEGER,
         receiver_id INTEGER,
         content TEXT,
         date TEXT
-    )
-    """)
+    );
 
-    con.execute("""
-    CREATE TABLE IF NOT EXISTS followers(
+    CREATE TABLE IF NOT EXISTS followers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         follower_id INTEGER,
         following_id INTEGER
-    )
-    """)
+    );
 
-    con.execute("""
-    CREATE TABLE IF NOT EXISTS notifications(
+    CREATE TABLE IF NOT EXISTS notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         message TEXT
-    )
+    );
     """)
+
+    # Migrations compatibles avec les anciennes bases de données.
+    # Elles ajoutent uniquement les colonnes manquantes et conservent les données.
+    migrations = {
+        "likes": {
+            "reaction": "TEXT NOT NULL DEFAULT 'like'"
+        },
+        "messages": {
+            "is_read": "INTEGER NOT NULL DEFAULT 0"
+        },
+        "notifications": {
+            "is_read": "INTEGER NOT NULL DEFAULT 0"
+        },
+        "users": {
+            "bio": "TEXT DEFAULT ''",
+            "city": "TEXT DEFAULT ''",
+            "cover_pic": "TEXT"
+        }
+    }
+
+    for table, columns_to_add in migrations.items():
+        existing_columns = {
+            row["name"]
+            for row in con.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        for column, definition in columns_to_add.items():
+            if column not in existing_columns:
+                con.execute(
+                    f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
+                )
 
     con.commit()
     con.close()
 
-init_db()
-# ---------------- HOME ----------------
-@app.route("/")
-def index():
-    if "user_id" not in session:
-        return redirect("/login")
 
+init_db()
+
+
+def login_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def save_image(file):
+    if not file or not file.filename:
+        return None
+
+    original = secure_filename(file.filename)
+
+    if "." not in original:
+        return None
+
+    extension = original.rsplit(".", 1)[1].lower()
+
+    if extension not in ALLOWED_EXTENSIONS:
+        return None
+
+    filename = f"{uuid.uuid4().hex}.{extension}"
+    file.save(os.path.join(UPLOAD_FOLDER, filename))
+
+    return filename
+
+
+def notify(user_id, message):
+    con = get_db()
+    con.execute(
+        "INSERT INTO notifications(user_id, message) VALUES (?, ?)",
+        (user_id, message)
+    )
+    con.commit()
+    con.close()
+
+# ACCUEIL
+@app.route("/")
+@login_required
+def index():
     con = get_db()
 
+    # Récupérer les publications et les réactions
     posts = con.execute("""
-        SELECT posts.*, users.username, users.profile_pic,
-        (SELECT COUNT(*) FROM likes WHERE post_id = posts.id) AS like_count
-        FROM posts
-        JOIN users ON posts.user_id = users.id
-        ORDER BY posts.id DESC
-    """).fetchall()
+        SELECT
+            posts.*,
+            users.username,
+            users.profile_pic,
 
+            (SELECT COUNT(*) FROM likes
+             WHERE likes.post_id = posts.id) AS like_count,
+
+            (SELECT reaction FROM likes
+             WHERE likes.post_id = posts.id
+             AND likes.user_id = ?
+             ORDER BY id DESC LIMIT 1) AS user_reaction,
+
+            (SELECT COUNT(*) FROM likes
+             WHERE likes.post_id = posts.id
+             AND reaction = 'like') AS count_like,
+
+            (SELECT COUNT(*) FROM likes
+             WHERE likes.post_id = posts.id
+             AND reaction = 'love') AS count_love,
+
+            (SELECT COUNT(*) FROM likes
+             WHERE likes.post_id = posts.id
+             AND reaction = 'haha') AS count_haha,
+
+            (SELECT COUNT(*) FROM likes
+             WHERE likes.post_id = posts.id
+             AND reaction = 'wow') AS count_wow,
+
+            (SELECT COUNT(*) FROM likes
+             WHERE likes.post_id = posts.id
+             AND reaction = 'sad') AS count_sad,
+
+            (SELECT COUNT(*) FROM likes
+             WHERE likes.post_id = posts.id
+             AND reaction = 'angry') AS count_angry
+
+        FROM posts
+        JOIN users ON users.id = posts.user_id
+        ORDER BY posts.id DESC
+    """, (session["user_id"],)).fetchall()
+
+        # Compter les notifications non lues
+    unread_count = con.execute("""
+        SELECT COUNT(*)
+        FROM notifications
+        WHERE user_id = ? AND is_read = 0
+    """, (session["user_id"],)).fetchone()[0]
+
+    # Compter les messages privés non lus reçus
+    unread_messages = con.execute("""
+        SELECT COUNT(*)
+        FROM messages
+        WHERE receiver_id = ? AND is_read = 0
+    """, (session["user_id"],)).fetchone()[0]
+
+    # Récupérer les commentaires
     comments = con.execute("""
         SELECT comments.*, users.username
         FROM comments
-        JOIN users ON comments.user_id = users.id
+        JOIN users ON users.id = comments.user_id
+        ORDER BY comments.id ASC
     """).fetchall()
+
+    # Récupérer le membre connecté
+    current_user = con.execute("""
+        SELECT id, username, profile_pic
+        FROM users
+        WHERE id = ?
+    """, (session["user_id"],)).fetchone()
 
     con.close()
 
-    return render_template("index.html", posts=posts, comments=comments)
+    return render_template(
+    "index.html",
+    posts=posts,
+    comments=comments,
+    current_user=current_user,
+    unread_count=unread_count,
+    unread_messages=unread_messages
+)
 
-
-# ---------------- REGISTER ----------------
-@app.route("/register", methods=["GET","POST"])
+# INSCRIPTION
+@app.route("/register", methods=["GET", "POST"])
 def register():
-
     if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
 
-        username = request.form["username"]
-        email = request.form["email"]
-        password = bcrypt.generate_password_hash(
-            request.form["password"]
-        ).decode("utf-8")
-
-        profile_pic = request.files.get("profile_pic")
-        filename = None
-
-        if profile_pic and profile_pic.filename != "":
-            filename = secure_filename(profile_pic.filename)
-            profile_pic.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+        if not username or not email or len(password) < 6:
+            return "Remplis tous les champs. Mot de passe : 6 caractères minimum.", 400
 
         con = get_db()
 
-        con.execute(
-            "INSERT INTO users(username,email,password,profile_pic) VALUES(?,?,?,?)",
-            (username,email,password,filename)
-        )
+        existing = con.execute(
+            "SELECT id FROM users WHERE email = ?", (email,)
+        ).fetchone()
+
+        if existing:
+            con.close()
+            return "Cette adresse email est déjà utilisée.", 400
+
+        password_hash = bcrypt.generate_password_hash(
+            password
+        ).decode("utf-8")
+
+        try:
+            profile_pic = save_image(request.files.get("profile_pic"))
+        except Exception:
+            con.close()
+            return "Image invalide ou trop volumineuse.", 400
+
+        con.execute("""
+            INSERT INTO users(username, email, password, profile_pic)
+            VALUES (?, ?, ?, ?)
+        """, (username, email, password_hash, profile_pic))
 
         con.commit()
         con.close()
 
-        return redirect("/login")
+        return redirect(url_for("login"))
 
     return render_template("register.html")
 
 
-# ---------------- LOGIN ----------------
-@app.route("/login", methods=["GET","POST"])
+# CONNEXION
+@app.route("/login", methods=["GET", "POST"])
 def login():
-
     if request.method == "POST":
-
-        email = request.form["email"]
-        password = request.form["password"]
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
 
         con = get_db()
-
         user = con.execute(
-            "SELECT * FROM users WHERE email=?",
-            (email,)
+            "SELECT * FROM users WHERE email = ?", (email,)
         ).fetchone()
 
-        if user and bcrypt.check_password_hash(user["password"], password):
-
+        if user and bcrypt.check_password_hash(
+            user["password"], password
+        ):
+            session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
 
             con.execute(
-                "UPDATE users SET online=1 WHERE id=?",
+                "UPDATE users SET online = 1 WHERE id = ?",
                 (user["id"],)
             )
-
             con.commit()
             con.close()
 
-            return redirect("/")
+            return redirect(url_for("index"))
 
-        else:
-            return "Email ou mot de passe incorrect"
+        con.close()
+        return "Email ou mot de passe incorrect.", 401
 
     return render_template("login.html")
 
 
-# ---------------- LOGOUT ----------------
+# DECONNEXION
 @app.route("/logout")
+@login_required
 def logout():
-
-    if "user_id" in session:
-
-        con = get_db()
-
-        con.execute(
-            "UPDATE users SET online=0 WHERE id=?",
-            (session["user_id"],)
-        )
-
-        con.commit()
-        con.close()
+    con = get_db()
+    con.execute(
+        "UPDATE users SET online = 0 WHERE id = ?",
+        (session["user_id"],)
+    )
+    con.commit()
+    con.close()
 
     session.clear()
+    return redirect(url_for("login"))
 
-    return redirect("/")
+
+# CREER UNE PUBLICATION
+@app.route("/create_post", methods=["POST"])
+@login_required
+def create_post():
+    content = request.form.get("content", "").strip()
+
+    try:
+        image = save_image(request.files.get("image"))
+    except Exception:
+        return "Image invalide ou trop volumineuse.", 400
+
+    if not content and not image:
+        return "Écris un message ou ajoute une photo.", 400
+
+    con = get_db()
+    con.execute("""
+        INSERT INTO posts(user_id, content, image, date)
+        VALUES (?, ?, ?, ?)
+    """, (
+        session["user_id"],
+        content,
+        image,
+        datetime.now().strftime("%d/%m/%Y %H:%M")
+    ))
+    con.commit()
+    con.close()
+
+    return redirect(url_for("index"))
+
+# REACTIONS AUX PUBLICATIONS
+@app.route("/react/<int:post_id>", methods=["POST"])
+@login_required
+def react(post_id):
+    reactions_autorisees = [
+        "like", "love", "haha", "wow", "sad", "angry"
+    ]
+
+    reaction = request.form.get("reaction", "").strip()
+
+    if reaction not in reactions_autorisees and reaction != "remove":
+        return "Réaction invalide.", 400
+
+    con = get_db()
+
+    post = con.execute(
+        "SELECT * FROM posts WHERE id = ?", (post_id,)
+    ).fetchone()
+
+    if not post:
+        con.close()
+        return "Publication introuvable.", 404
+
+    existing = con.execute("""
+        SELECT id, reaction FROM likes
+        WHERE user_id = ? AND post_id = ?
+        ORDER BY id DESC LIMIT 1
+    """, (session["user_id"], post_id)).fetchone()
+
+    if reaction == "remove":
+        if existing:
+            con.execute(
+                "DELETE FROM likes WHERE user_id = ? AND post_id = ?",
+                (session["user_id"], post_id)
+            )
+
+    elif existing:
+        con.execute("""
+            UPDATE likes SET reaction = ?
+            WHERE id = ?
+        """, (reaction, existing["id"]))
+
+    else:
+        con.execute("""
+            INSERT INTO likes (user_id, post_id, reaction)
+            VALUES (?, ?, ?)
+        """, (session["user_id"], post_id, reaction))
+
+        if post["user_id"] != session["user_id"]:
+            con.execute("""
+                INSERT INTO notifications(user_id, message)
+                VALUES (?, ?)
+            """, (
+                post["user_id"],
+                session["username"] + " a réagi à votre publication."
+            ))
+
+    con.commit()
+    con.close()
+
+    return redirect(request.referrer or url_for("index"))
+    
+# COMMENTAIRES
+@app.route("/comment/<int:post_id>", methods=["POST"])
+@login_required
+def comment(post_id):
+    content = request.form.get("content", "").strip()
+
+    if not content:
+        return redirect(url_for("index"))
+
+    con = get_db()
+
+    post = con.execute(
+        "SELECT * FROM posts WHERE id = ?", (post_id,)
+    ).fetchone()
+
+    if not post:
+        con.close()
+        return "Publication introuvable.", 404
+
+    con.execute("""
+        INSERT INTO comments(user_id, post_id, content, date)
+        VALUES (?, ?, ?, ?)
+    """, (
+        session["user_id"],
+        post_id,
+        content,
+        datetime.now().strftime("%d/%m/%Y %H:%M")
+    ))
+
+    if post["user_id"] != session["user_id"]:
+        con.execute("""
+            INSERT INTO notifications(user_id, message)
+            VALUES (?, ?)
+        """, (
+            post["user_id"],
+            session["username"] + " a commenté votre publication."
+        ))
+        
+    # Migration automatique des profils
+    columns = [
+        row["name"]
+        for row in con.execute("PRAGMA table_info(users)").fetchall()
+    ]
+
+    if "bio" not in columns:
+        con.execute("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''")
+
+    if "city" not in columns:
+        con.execute("ALTER TABLE users ADD COLUMN city TEXT DEFAULT ''")
+
+    if "cover_pic" not in columns:
+        con.execute("ALTER TABLE users ADD COLUMN cover_pic TEXT")
+    
+    con.commit()
+    con.close()
+
+    return redirect(request.referrer or url_for("index"))
 
 
-# ---------------- RUN ----------------
+
+# PROFIL UTILISATEUR
+@app.route("/profile/<int:user_id>")
+@login_required
+def profile(user_id):
+    con = get_db()
+
+    user = con.execute(
+        "SELECT * FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+
+    if not user:
+        con.close()
+        return "Utilisateur introuvable.", 404
+
+    posts = con.execute(
+        "SELECT * FROM posts WHERE user_id = ? ORDER BY id DESC",
+        (user_id,)
+    ).fetchall()
+
+    post_list = []
+
+    for post in posts:
+        comments = con.execute("""
+            SELECT comments.*, users.username
+            FROM comments
+            JOIN users ON users.id = comments.user_id
+            WHERE comments.post_id = ?
+            ORDER BY comments.id ASC
+        """, (post["id"],)).fetchall()
+
+        item = dict(post)
+        item["comments"] = comments
+        post_list.append(item)
+
+    followers = con.execute(
+        "SELECT COUNT(*) FROM followers WHERE following_id = ?",
+        (user_id,)
+    ).fetchone()[0]
+
+    following_count = con.execute(
+        "SELECT COUNT(*) FROM followers WHERE follower_id = ?",
+        (user_id,)
+    ).fetchone()[0]
+
+    is_following = con.execute("""
+        SELECT id FROM followers
+        WHERE follower_id = ? AND following_id = ?
+    """, (session["user_id"], user_id)).fetchone()
+
+    con.close()
+
+    return render_template(
+        "profile.html",
+        user=user,
+        posts=post_list,
+        followers=followers,
+        following_count=following_count,
+        is_following=bool(is_following)
+    )
+
+
+# MODIFIER MON PROFIL
+@app.route("/edit_profile", methods=["GET", "POST"])
+@login_required
+def edit_profile():
+    con = get_db()
+
+    user = con.execute(
+        "SELECT * FROM users WHERE id = ?",
+        (session["user_id"],)
+    ).fetchone()
+
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        bio = request.form.get("bio", "").strip()
+        city = request.form.get("city", "").strip()
+
+        if not username:
+            con.close()
+            return "Le nom est obligatoire.", 400
+
+        profile_pic = user["profile_pic"]
+        cover_pic = user["cover_pic"]
+
+        try:
+            new_profile = save_image(
+                request.files.get("profile_pic")
+            )
+            new_cover = save_image(
+                request.files.get("cover_pic")
+            )
+        except Exception:
+            con.close()
+            return "Image invalide ou trop volumineuse.", 400
+
+        if new_profile:
+            profile_pic = new_profile
+
+        if new_cover:
+            cover_pic = new_cover
+
+        con.execute("""
+            UPDATE users
+            SET username = ?, bio = ?, city = ?,
+                profile_pic = ?, cover_pic = ?
+            WHERE id = ?
+        """, (
+            username, bio, city,
+            profile_pic, cover_pic,
+            session["user_id"]
+        ))
+
+        con.commit()
+        session["username"] = username
+        con.close()
+
+        return redirect(url_for(
+            "profile", user_id=session["user_id"]
+        ))
+
+    con.close()
+    return render_template("edit_profile.html", user=user)
+
+# SUIVRE / NE PLUS SUIVRE
+@app.route("/follow/<int:user_id>")
+@login_required
+def follow(user_id):
+    if user_id == session["user_id"]:
+        return redirect(url_for("profile", user_id=user_id))
+
+    con = get_db()
+
+    target = con.execute(
+        "SELECT id FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+
+    if not target:
+        con.close()
+        return "Utilisateur introuvable.", 404
+
+    existing = con.execute("""
+        SELECT id FROM followers
+        WHERE follower_id = ? AND following_id = ?
+    """, (session["user_id"], user_id)).fetchone()
+
+    if existing:
+        con.execute(
+            "DELETE FROM followers WHERE id = ?", (existing["id"],)
+        )
+    else:
+        con.execute("""
+            INSERT INTO followers(follower_id, following_id)
+            VALUES (?, ?)
+        """, (session["user_id"], user_id))
+
+        con.execute("""
+            INSERT INTO notifications(user_id, message)
+            VALUES (?, ?)
+        """, (
+            user_id,
+            session["username"] + " vous suit maintenant."
+        ))
+
+    con.commit()
+    con.close()
+
+    return redirect(url_for("profile", user_id=user_id))
+
+
+# LISTE DES PERSONNES SUIVIES
+@app.route("/following")
+@login_required
+def following():
+    con = get_db()
+
+    users = con.execute("""
+        SELECT users.*
+        FROM followers
+        JOIN users ON users.id = followers.following_id
+        WHERE followers.follower_id = ?
+    """, (session["user_id"],)).fetchall()
+
+    con.close()
+    return render_template("following.html", users=users)
+
+
+# CENTRE DE NOTIFICATIONS
+@app.route("/notifications")
+@login_required
+def notifications():
+    con = get_db()
+
+    notes = con.execute("""
+        SELECT *
+        FROM notifications
+        WHERE user_id = ?
+        ORDER BY id DESC
+    """, (session["user_id"],)).fetchall()
+
+    # Marquer les notifications comme lues
+    con.execute("""
+        UPDATE notifications
+        SET is_read = 1
+        WHERE user_id = ?
+    """, (session["user_id"],))
+
+    con.commit()
+    con.close()
+
+    return render_template("notifications.html", notes=notes)
+
+# LISTE DES CONVERSATIONS
+@app.route("/conversations")
+@login_required
+def conversations():
+    con = get_db()
+
+    users = con.execute("""
+        SELECT DISTINCT users.*
+        FROM users
+        JOIN messages ON (
+            users.id = messages.sender_id
+            OR users.id = messages.receiver_id
+        )
+        WHERE users.id != ?
+          AND (
+            messages.sender_id = ?
+            OR messages.receiver_id = ?
+          )
+    """, (
+        session["user_id"],
+        session["user_id"],
+        session["user_id"]
+    )).fetchall()
+
+    con.close()
+    return render_template("conversations.html", users=users)
+
+
+# MESSAGES PRIVES
+@app.route("/messages/<int:user_id>", methods=["GET", "POST"])
+@login_required
+def messages(user_id):
+    con = get_db()
+
+    other_user = con.execute(
+        "SELECT * FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+
+    if not other_user or user_id == session["user_id"]:
+        con.close()
+        return "Utilisateur introuvable.", 404
+
+    if request.method == "POST":
+        content = request.form.get("content", "").strip()
+
+        if content:
+            con.execute("""
+                INSERT INTO messages(sender_id, receiver_id, content, date)
+                VALUES (?, ?, ?, ?)
+            """, (
+                session["user_id"],
+                user_id,
+                content,
+                datetime.now().strftime("%d/%m/%Y %H:%M")
+            ))
+            con.commit()
+
+        con.close()
+        return redirect(url_for("messages", user_id=user_id))
+
+    # Marquer comme lus les messages reçus de cet utilisateur
+    con.execute("""
+        UPDATE messages
+        SET is_read = 1
+        WHERE sender_id = ? AND receiver_id = ? AND is_read = 0
+    """, (user_id, session["user_id"]))
+
+    con.commit()
+
+    # Récupérer les messages de la conversation
+    msgs = con.execute("""
+        SELECT messages.*, users.username AS sender_name
+        FROM messages
+        JOIN users ON users.id = messages.sender_id
+        WHERE
+            (messages.sender_id = ? AND messages.receiver_id = ?)
+            OR
+            (messages.sender_id = ? AND messages.receiver_id = ?)
+        ORDER BY messages.id ASC
+    """, (
+        session["user_id"], user_id,
+        user_id, session["user_id"]
+    )).fetchall()
+
+    con.close()
+
+    return render_template(
+        "messages.html", msgs=msgs, other_user=other_user
+    )
+
+@app.route("/api/messages/<int:user_id>", methods=["GET", "POST"])
+@login_required
+def messages_api(user_id):
+    con = get_db()
+
+    current_id = session["user_id"]
+
+    other_user = con.execute(
+        "SELECT id FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+
+    if not other_user or user_id == current_id:
+        con.close()
+        return jsonify({"error": "Utilisateur introuvable"}), 404
+
+    if request.method == "POST":
+        content = request.form.get("content", "").strip()
+
+        if not content:
+            con.close()
+            return jsonify({"error": "Message vide"}), 400
+
+        if len(content) > 5000:
+            con.close()
+            return jsonify({"error": "Message trop long"}), 400
+
+        cursor = con.execute("""
+            INSERT INTO messages(sender_id, receiver_id, content, date)
+            VALUES (?, ?, ?, ?)
+        """, (
+            current_id,
+            user_id,
+            content,
+            datetime.now().strftime("%d/%m/%Y %H:%M")
+        ))
+
+        message_id = cursor.lastrowid
+        con.commit()
+
+        message = con.execute("""
+            SELECT messages.id, messages.sender_id,
+                   messages.content, messages.date,
+                   users.username AS sender_name
+            FROM messages
+            JOIN users ON users.id = messages.sender_id
+            WHERE messages.id = ?
+        """, (message_id,)).fetchone()
+
+        con.close()
+        return jsonify(dict(message)), 201
+
+    # Marquer comme lus les messages reçus
+    con.execute("""
+        UPDATE messages
+        SET is_read = 1
+        WHERE sender_id = ? AND receiver_id = ? AND is_read = 0
+    """, (user_id, current_id))
+
+    after_id = request.args.get("after_id", 0, type=int)
+
+    messages_list = con.execute("""
+        SELECT messages.id, messages.sender_id,
+               messages.content, messages.date,
+               users.username AS sender_name
+        FROM messages
+        JOIN users ON users.id = messages.sender_id
+        WHERE (
+            (messages.sender_id = ? AND messages.receiver_id = ?)
+            OR
+            (messages.sender_id = ? AND messages.receiver_id = ?)
+        )
+        AND messages.id > ?
+        ORDER BY messages.id ASC
+    """, (
+        current_id, user_id,
+        user_id, current_id,
+        after_id
+    )).fetchall()
+
+    con.commit()
+    con.close()
+
+    return jsonify([dict(message) for message in messages_list])
+
+@app.errorhandler(413)
+def file_too_large(error):
+    return "Fichier trop volumineux. Maximum : 5 Mo.", 413
+
+@app.route("/search")
+@login_required
+def search():
+    query = request.args.get("q", "").strip()
+
+    users = []
+
+    if query:
+        db = get_db()
+
+        users = db.execute("""
+            SELECT id, username, profile_pic
+            FROM users
+            WHERE username LIKE ? OR email LIKE ?
+            ORDER BY username ASC
+            LIMIT 30
+        """, (f"%{query}%", f"%{query}%")).fetchall()
+
+        db.close()
+
+    return render_template(
+        "search.html",
+        users=users,
+        query=query
+    )
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=False)

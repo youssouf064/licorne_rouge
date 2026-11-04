@@ -1,19 +1,206 @@
-<h1>🔔 Notifications</h1>
 
-<a href="/">⬅ Retour accueil</a>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - Licorne Rouge</title>
 
-<hr>
+    <style>
+        :root {
+            --primary: #d62936;
+            --primary-dark: #ad1725;
+            --background: #f0f2f5;
+            --white: #ffffff;
+            --text: #202124;
+            --muted: #777;
+            --border: #e4e6eb;
+        }
 
-{% for note in notes %}
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-<p>{{note["message"]}}</p>
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--background);
+            color: var(--text);
+        }
 
-<hr>
+        .topbar {
+            background: white;
+            padding: 17px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
 
-{% else %}
+        .brand {
+            font-size: 23px;
+            font-weight: bold;
+            color: var(--primary);
+        }
 
-<p>Aucune notification</p>
+        .container {
+            max-width: 750px;
+            margin: 35px auto;
+            padding: 0 15px;
+        }
 
+        .header {
+            background: white;
+            padding: 22px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+        }
 
-{% endfor %}
+        .header h1 {
+            font-size: 25px;
+            margin-bottom: 8px;
+        }
 
+        .header p {
+            color: var(--muted);
+        }
+
+        .back {
+            display: inline-block;
+            margin-top: 15px;
+            color: var(--primary);
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .notification {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 18px;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+            transition: .2s;
+        }
+
+        .notification.unread {
+            background: #fff0f1;
+            border-left: 4px solid var(--primary);
+        }
+
+        .notification:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 12px rgba(0,0,0,.07);
+        }
+
+        .notification-icon {
+            width: 45px;
+            height: 45px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            background: #f9dfe2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 21px;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-content p {
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+        }
+
+        .notification-content small {
+            display: block;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        .unread-label {
+            color: var(--primary);
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .empty {
+            background: white;
+            padding: 45px 20px;
+            text-align: center;
+            border-radius: 12px;
+        }
+
+        .empty div {
+            font-size: 45px;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin-top: 18px;
+            }
+
+            .header h1 {
+                font-size: 21px;
+            }
+
+            .notification {
+                padding: 13px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="topbar">
+        <div class="brand">❤️ Licorne Rouge</div>
+    </header>
+
+    <main class="container">
+
+        <section class="header">
+            <h1>🔔 Notifications</h1>
+            <p>Retrouve ici les dernières activités de ta communauté.</p>
+            <a href="{{ url_for('index') }}" class="back">
+                ← Retour à l'accueil
+            </a>
+        </section>
+
+        {% for note in notes %}
+
+            <article class="notification
+                {% if not note['is_read'] %}unread{% endif %}">
+
+                <div class="notification-icon">🔔</div>
+
+                <div class="notification-content">
+                    <p>{{ note['message'] }}</p>
+
+                    {% if not note['is_read'] %}
+                        <span class="unread-label">NOUVELLE NOTIFICATION</span>
+                    {% endif %}
+                </div>
+
+            </article>
+
+        {% else %}
+
+            <section class="empty">
+                <div>🔕</div>
+                <h3>Aucune notification</h3>
+                <p>Tu seras informé des nouvelles activités ici.</p>
+            </section>
+
+        {% endfor %}
+
+    </main>
+
+</body>
+</html>

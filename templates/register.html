@@ -1,11 +1,173 @@
-<h1>Inscription</h1>
-<form method="post" enctype="multipart/form-data">
-<input type="text" name="username" placeholder="Nom"><br>
-<input type="email" name="email"><br>
-<input type="password" name="password"><br>
 
-<input type="file" name="profile_pic"><br>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inscription - Licorne Rouge</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-<button>S'inscrire</button>
-</form>
-<a href="/login">Déjà inscrit ? Connexion</a>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #f1f2f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .register-card {
+            width: 100%;
+            max-width: 520px;
+            background: white;
+            padding: 40px;
+            border-radius: 18px;
+            box-shadow: 0 12px 40px rgba(0,0,0,.10);
+        }
+
+        .brand {
+            text-align: center;
+            color: #d92335;
+            font-size: 34px;
+            font-weight: bold;
+        }
+
+        .logo {
+            font-size: 48px;
+            text-align: center;
+        }
+
+        h2 {
+            text-align: center;
+            color: #222;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #777;
+            margin-bottom: 28px;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 9px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #d92335;
+            box-shadow: 0 0 0 3px rgba(217,35,53,.10);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #d92335;
+            color: white;
+            border: none;
+            border-radius: 9px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover { background: #b9162b; }
+
+        .login-link {
+            text-align: center;
+            margin-top: 24px;
+            color: #666;
+        }
+
+        .login-link a {
+            color: #d92335;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .flash-message {
+            padding: 12px;
+            background: #fff0f1;
+            color: #bd1e32;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        @media(max-width: 500px) {
+            .register-card { padding: 28px 20px; }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="register-card">
+
+    <div class="logo">🦄</div>
+    <div class="brand">Licorne Rouge</div>
+
+    <h2>Créer un compte</h2>
+    <p class="subtitle">Rejoignez notre communauté dès aujourd'hui.</p>
+
+    {% with messages = get_flashed_messages() %}
+        {% for message in messages %}
+            <div class="flash-message">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('register') }}">
+
+        <div class="field">
+            <label>Nom d'utilisateur</label>
+            <input type="text" name="username"
+                   placeholder="Votre nom" required>
+        </div>
+
+        <div class="field">
+            <label>Adresse e-mail</label>
+            <input type="email" name="email"
+                   placeholder="exemple@email.com" required>
+        </div>
+
+        <div class="field">
+            <label>Mot de passe</label>
+            <input type="password" name="password"
+                   placeholder="Choisissez un mot de passe"
+                   minlength="6" required>
+        </div>
+
+        <button type="submit">Créer mon compte</button>
+
+    </form>
+
+    <div class="login-link">
+        Vous avez déjà un compte ?
+        <a href="{{ url_for('login') }}">Se connecter</a>
+    </div>
+
+</div>
+
+</body>
+</html>
+

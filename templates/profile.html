@@ -1,40 +1,160 @@
-<h1>Profil de {{ user["username"] }}</h1>
 
-<p>Email : {{ user["email"] }}</p>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profil - Licorne Rouge</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+.profile-card {
+    background:white;
+    border-radius:14px;
+    overflow:hidden;
+    margin:25px auto;
+    max-width:850px;
+}
+.cover {
+    height:240px;
+    background:#d62936;
+    background-size:cover;
+    background-position:center;
+}
+.profile-info {
+    padding:20px;
+    text-align:center;
+}
+.profile-photo {
+    width:120px;
+    height:120px;
+    border-radius:50%;
+    border:5px solid white;
+    object-fit:cover;
+    margin-top:-80px;
+    background:#eee;
+}
+.profile-info h1 {margin:10px 0;}
+.profile-info p {color:#666;margin:10px;}
+.profile-stats {
+    display:flex;
+    justify-content:center;
+    gap:35px;
+    padding:15px;
+    border-top:1px solid #eee;
+}
+.profile-buttons {
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin:15px;
+}
+.profile-buttons a {
+    background:#d62936;
+    color:white;
+    padding:11px 18px;
+    border-radius:8px;
+}
+.profile-posts {
+    max-width:850px;
+    margin:auto;
+}
+</style>
+</head>
+<body>
+    
+<nav class="profile-nav">
+    <a href="/">🏠 Accueil</a>
 
-{% if user["online"] == 1 %}
-🟢 En ligne
-{% else %}
-⚪ Hors ligne
-{% endif %}
+    <a href="/notifications" class="nav-badge">
+        🔔 Notifications
+        {% if unread_count > 0 %}
+        <span class="badge-count">{{ unread_count }}</span>
+        {% endif %}
+    </a>
 
-{% if session.username and session.user_id != user["id"] %}
-<!-- Bouton pour démarrer la discussion avec cet utilisateur -->
-<form action="/messages/{{ user['id'] }}" method="get" style="margin-top:10px;">
-    <button type="submit">💬 Envoyer un message</button>
-</form>
-{% endif %}
+    <a href="/conversations" class="nav-badge">
+        💬 Messages
+        {% if unread_messages > 0 %}
+        <span class="badge-count">{{ unread_messages }}</span>
+        {% endif %}
+    </a>
+</nav>
+    
+<div class="profile-card">
 
-<a href="/">⬅ Retour accueil</a>
+    <div class="cover"
+    {% if user['cover_pic'] %}
+    style="background-image:url('{{ url_for('static', filename='images/' + user['cover_pic']) }}')"
+    {% endif %}>
+    </div>
 
-<hr>
+    <div class="profile-info">
 
-<h2>Publications</h2>
+        {% if user['profile_pic'] %}
+        <img class="profile-photo"
+        src="{{ url_for('static', filename='images/' + user['profile_pic']) }}">
+        {% else %}
+        <div class="profile-photo" style="display:inline-flex;align-items:center;justify-content:center;font-size:45px;">👤</div>
+        {% endif %}
 
-{% for post in posts %}
-<div style="border:1px solid #ccc; padding:10px; margin:10px;">
-    <p>{{ post["content"] }}</p>
-    <p><i>{{ post["date"] }}</i></p>
-    {% if post["image"] %}
-    <img src="/static/images/{{ post['image'] }}" width="200">
-    {% endif %}
+        <h1>{{ user['username'] }}</h1>
 
-    {% if post["comments"] %}
-    <h4>Commentaires :</h4>
-    {% for comment in post["comments"] %}
-        <p><b>{{ comment["username"] }}</b> : {{ comment["content"] }}</p>
+        {% if user['online'] == 1 %}
+        <p>🟢 En ligne</p>
+        {% else %}
+        <p>⚪ Hors ligne</p>
+        {% endif %}
+
+        <p>{{ user['bio'] or 'Bienvenue sur mon profil Licorne Rouge !' }}</p>
+        <p>📍 {{ user['city'] or 'Ville non renseignée' }}</p>
+
+        <div class="profile-stats">
+            <div><strong>{{ followers }}</strong><br>Abonnés</div>
+            <div><strong>{{ following_count }}</strong><br>Abonnements</div>
+            <div><strong>{{ posts|length }}</strong><br>Publications</div>
+        </div>
+
+        <div class="profile-buttons">
+
+            {% if session.user_id == user['id'] %}
+            <a href="/edit_profile">✏️ Modifier mon profil</a>
+            {% else %}
+            <a href="/follow/{{ user['id'] }}">
+                {% if is_following %}
+                Ne plus suivre
+                {% else %}
+                + Suivre
+                {% endif %}
+            </a>
+            <a href="/messages/{{ user['id'] }}">💬 Message</a>
+            {% endif %}
+
+            <a href="/">Accueil</a>
+        </div>
+
+    </div>
+</div>
+
+<div class="profile-posts">
+    <h2>Publications de {{ user['username'] }}</h2>
+
+    {% for post in posts %}
+    <article class="post">
+        <p>{{ post['content'] }}</p>
+
+        {% if post['image'] %}
+        <img class="post-image"
+        src="{{ url_for('static', filename='images/' + post['image']) }}">
+        {% endif %}
+
+        {% for comment in post['comments'] %}
+        <p><strong>{{ comment['username'] }}</strong>: {{ comment['content'] }}</p>
+        {% endfor %}
+    </article>
+    {% else %}
+    <p>Aucune publication pour le moment.</p>
     {% endfor %}
-    {% endif %}
-{% else %}
-<p>Aucune publication</p>
-{% endfor %}
+</div>
+
+</body>
+</html>

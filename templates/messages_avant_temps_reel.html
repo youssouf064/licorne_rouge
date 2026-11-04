@@ -1,0 +1,285 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages - Licorne Rouge</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #f1f2f5;
+    font-family: Arial, sans-serif;
+    color: #333;
+}
+
+.navbar {
+    background: white;
+    padding: 15px 5%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.logo {
+    color: #d62936;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.nav-links {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+}
+
+.badge {
+    background: #d62936;
+    color: white;
+    padding: 3px 7px;
+    border-radius: 20px;
+    font-size: 11px;
+}
+
+.chat-container {
+    max-width: 850px;
+    margin: 25px auto;
+    padding: 0 12px;
+}
+
+.chat-card {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 3px 15px rgba(0,0,0,.08);
+}
+
+.chat-header {
+    padding: 18px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-header h2 {
+    margin: 0;
+    color: #d62936;
+    font-size: 19px;
+}
+
+.back-link {
+    text-decoration: none;
+    color: #d62936;
+    font-weight: bold;
+}
+
+.chat-box {
+    height: 470px;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    background: #fafafa;
+}
+
+.message {
+    max-width: 75%;
+    padding: 12px 15px;
+    border-radius: 15px;
+    overflow-wrap: anywhere;
+}
+
+.sent {
+    align-self: flex-end;
+    background: #d62936;
+    color: white;
+    border-bottom-right-radius: 3px;
+}
+
+.received {
+    align-self: flex-start;
+    background: #e9e9e9;
+    color: #333;
+    border-bottom-left-radius: 3px;
+}
+
+.sender {
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.message-content {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.message-date {
+    display: block;
+    font-size: 10px;
+    margin-top: 7px;
+    opacity: .75;
+    text-align: right;
+}
+
+.empty-chat {
+    text-align: center;
+    color: #888;
+    margin: auto;
+}
+
+.chat-form {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    border-top: 1px solid #eee;
+    background: white;
+}
+
+.chat-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 13px;
+    border: 1px solid #ddd;
+    border-radius: 25px;
+    outline: none;
+    font-size: 15px;
+}
+
+.chat-form input:focus {
+    border-color: #d62936;
+}
+
+.chat-form button {
+    background: #d62936;
+    color: white;
+    border: none;
+    padding: 0 22px;
+    border-radius: 25px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.chat-form button:hover {
+    background: #b51f2b;
+}
+
+@media(max-width: 500px) {
+    .navbar {
+        justify-content: center;
+    }
+
+    .chat-box {
+        height: 60vh;
+        padding: 12px;
+    }
+
+    .message {
+        max-width: 88%;
+    }
+
+    .chat-header h2 {
+        font-size: 16px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<nav class="navbar">
+    <div class="logo">❤️ Licorne Rouge</div>
+
+    <div class="nav-links">
+        <a href="/">🏠 Accueil</a>
+
+        <a href="/conversations">💬 Conversations
+            {% if unread_messages > 0 %}
+            <span class="badge">{{ unread_messages }}</span>
+            {% endif %}
+        </a>
+
+        <a href="/notifications">🔔 Notifications
+            {% if unread_count > 0 %}
+            <span class="badge">{{ unread_count }}</span>
+            {% endif %}
+        </a>
+    </div>
+</nav>
+
+<div class="chat-container">
+
+    <div class="chat-card">
+
+        <div class="chat-header">
+            <h2>💬 {{ other_user['username'] }}</h2>
+            <a href="/conversations" class="back-link">← Retour</a>
+        </div>
+
+        <div class="chat-box" id="chatBox">
+
+            {% for msg in msgs %}
+
+            <div class="message {% if msg['sender_id'] == session.user_id %}sent{% else %}received{% endif %}">
+
+                <div class="sender">
+                    {{ msg['sender_name'] }}
+                </div>
+
+                <p class="message-content">{{ msg['content'] }}</p>
+
+                <span class="message-date">
+                    {{ msg['date'] }}
+                </span>
+
+            </div>
+
+            {% else %}
+
+            <div class="empty-chat">
+                <p>👋 Commencez votre conversation !</p>
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        <form method="post" class="chat-form">
+            <input
+                type="text"
+                name="content"
+                placeholder="Écrire un message..."
+                maxlength="5000"
+                autocomplete="off"
+                required
+            >
+            <button type="submit">Envoyer ➤</button>
+        </form>
+
+    </div>
+
+</div>
+
+<script>
+const chatBox = document.getElementById("chatBox");
+chatBox.scrollTop = chatBox.scrollHeight;
+</script>
+
+</body>
+</html>

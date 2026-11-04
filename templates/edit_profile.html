@@ -1,0 +1,51 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modifier mon profil</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="composer" style="max-width:600px;margin:40px auto;">
+
+<h1>✏️ Modifier mon profil</h1>
+
+<form method="POST" enctype="multipart/form-data">
+
+<label>Nom d'utilisateur</label>
+<input type="text" name="username"
+value="{{ user['username'] }}" required style="width:100%;padding:12px;margin:10px 0;">
+
+<label>Biographie</label>
+<textarea name="bio" rows="4"
+style="width:100%;padding:12px;margin:10px 0;">{{ user['bio'] or '' }}</textarea>
+
+<label>Ma ville</label>
+<select name="city" style="width:100%;padding:12px;margin:10px 0;">
+<option value="">Choisir une ville</option>
+{% for city in ['Nouakchott','Nouadhibou','Kaédi','Rosso','Atar','Kiffa','Zouérate','Aïoun','Sélibaby','Néma','Tidjikja','Akjoujt','Boghé'] %}
+<option value="{{ city }}" {% if user['city'] == city %}selected{% endif %}>{{ city }}</option>
+{% endfor %}
+</select>
+
+<label>Nouvelle photo de profil</label>
+<input type="file" name="profile_pic" accept="image/*" style="display:block;margin:12px 0;">
+
+<label>Nouvelle photo de couverture</label>
+<input type="file" name="cover_pic" accept="image/*" style="display:block;margin:12px 0;">
+
+<button type="submit" class="publish-btn">Enregistrer les modifications</button>
+
+</form>
+
+<p style="margin-top:20px;">
+<a href="/profile/{{ session.user_id }}">⬅ Retour au profil</a>
+</p>
+
+</div>
+
+</body>
+</html>
