@@ -1,9 +1,9 @@
-
 import os
 import sqlite3
 import uuid
 from functools import wraps
 from datetime import datetime
+from urllib.parse import urlparse
 
 from flask import (
     Flask, render_template, request, redirect,
@@ -13,29 +13,58 @@ from flask_bcrypt import Bcrypt
 from werkzeug.utils import secure_filename
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "database.db")
+
+# Sur Render, tu pourras mettre DB_PATH vers un disque persistant.
+# Sans variable d'environnement, on garde database.db comme avant.
+DB_PATH = os.environ.get("DB_PATH", os.path.join(BASE_DIR, "database.db"))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "images")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-key-change-me")
+
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    SECRET_KEY = "dev-key-change-me"
+    if os.environ.get("RENDER"):
+        print(
+            "ATTENTION : la variable SECRET_KEY n'est pas definie sur Render. "
+            "Ajoute-la dans Environment."
+        )
+
+app.secret_key = SECRET_KEY
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+
+# Cookies de session plus sûrs (le mode "secure" n'est activé que sur Render,
+# pour que ton serveur local en http continue de fonctionner).
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = bool(os.environ.get("RENDER"))
 
 bcrypt = Bcrypt(app)
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+POSTS_PER_PAGE = 30
 
 
 def get_db():
-    con = sqlite3.connect(DB_PATH)
+    con = sqlite3.connect(DB_PATH, timeout=10)
     con.row_factory = sqlite3.Row
     return con
 
+
+def redirect_back(default_endpoint="index", **values):
+    """Revient à la page précédente, seulement si elle est sur notre site."""
+    ref = request.referrer
+    if ref and urlparse(ref).netloc == request.host:
+        return redirect(ref)
+    return redirect(url_for(default_endpoint, **values))
+
+
 @app.context_processor
 def inject_unread_counts():
-
     if "user_id" not in session:
         return {
             "unread_count": 0,
@@ -57,6 +86,11 @@ def inject_unread_counts():
             WHERE receiver_id = ? AND is_read = 0
         """, (session["user_id"],)).fetchone()[0]
 
+    except sqlite3.Error:
+        # Un souci de base ne doit pas faire planter toutes les pages.
+        unread_count = 0
+        unread_messages = 0
+
     finally:
         con.close()
 
@@ -64,6 +98,7 @@ def inject_unread_counts():
         "unread_count": unread_count,
         "unread_messages": unread_messages
     }
+
 
 def init_db():
     con = get_db()
@@ -151,6 +186,22 @@ def init_db():
                     f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
                 )
 
+    # Index : le site reste rapide quand il y a beaucoup de données.
+    con.executescript("""
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
+    CREATE INDEX IF NOT EXISTS idx_likes_post ON likes(post_id, user_id);
+    CREATE INDEX IF NOT EXISTS idx_messages_pair
+        ON messages(sender_id, receiver_id);
+    CREATE INDEX IF NOT EXISTS idx_messages_unread
+        ON messages(receiver_id, is_read);
+    CREATE INDEX IF NOT EXISTS idx_notifications_user
+        ON notifications(user_id, is_read);
+    CREATE INDEX IF NOT EXISTS idx_followers_pair
+        ON followers(follower_id, following_id);
+    """)
+
     con.commit()
     con.close()
 
@@ -158,11 +209,34 @@ def init_db():
 init_db()
 
 
+def _not_logged_in():
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Non connecté"}), 401
+    return redirect(url_for("login"))
+
+
 def login_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if "user_id" not in session:
-            return redirect(url_for("login"))
+        user_id = session.get("user_id")
+
+        if not user_id:
+            return _not_logged_in()
+
+        # Vérifie que le compte existe encore (utile si la base a été
+        # recréée : on évite de rester "connecté" avec un compte fantôme).
+        con = get_db()
+        try:
+            user = con.execute(
+                "SELECT id FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+        finally:
+            con.close()
+
+        if not user:
+            session.clear()
+            return _not_logged_in()
+
         return func(*args, **kwargs)
     return wrapper
 
@@ -196,14 +270,19 @@ def notify(user_id, message):
     con.commit()
     con.close()
 
+
 # ACCUEIL
 @app.route("/")
 @login_required
 def index():
+    page = max(request.args.get("page", 1, type=int), 1)
+    offset = (page - 1) * POSTS_PER_PAGE
+
     con = get_db()
 
     # Récupérer les publications et les réactions
-    posts = con.execute("""
+    # (on demande une publication de plus pour savoir s'il y a une page suivante)
+    rows = con.execute("""
         SELECT
             posts.*,
             users.username,
@@ -244,29 +323,26 @@ def index():
         FROM posts
         JOIN users ON users.id = posts.user_id
         ORDER BY posts.id DESC
-    """, (session["user_id"],)).fetchall()
+        LIMIT ? OFFSET ?
+    """, (session["user_id"], POSTS_PER_PAGE + 1, offset)).fetchall()
 
-        # Compter les notifications non lues
-    unread_count = con.execute("""
-        SELECT COUNT(*)
-        FROM notifications
-        WHERE user_id = ? AND is_read = 0
-    """, (session["user_id"],)).fetchone()[0]
+    has_next = len(rows) > POSTS_PER_PAGE
+    posts = rows[:POSTS_PER_PAGE]
 
-    # Compter les messages privés non lus reçus
-    unread_messages = con.execute("""
-        SELECT COUNT(*)
-        FROM messages
-        WHERE receiver_id = ? AND is_read = 0
-    """, (session["user_id"],)).fetchone()[0]
+    # Récupérer uniquement les commentaires des publications affichées
+    post_ids = [post["id"] for post in posts]
 
-    # Récupérer les commentaires
-    comments = con.execute("""
-        SELECT comments.*, users.username
-        FROM comments
-        JOIN users ON users.id = comments.user_id
-        ORDER BY comments.id ASC
-    """).fetchall()
+    if post_ids:
+        placeholders = ",".join("?" * len(post_ids))
+        comments = con.execute(f"""
+            SELECT comments.*, users.username
+            FROM comments
+            JOIN users ON users.id = comments.user_id
+            WHERE comments.post_id IN ({placeholders})
+            ORDER BY comments.id ASC
+        """, post_ids).fetchall()
+    else:
+        comments = []
 
     # Récupérer le membre connecté
     current_user = con.execute("""
@@ -277,14 +353,17 @@ def index():
 
     con.close()
 
+    # unread_count et unread_messages sont fournis automatiquement
+    # par le context_processor (inject_unread_counts).
     return render_template(
-    "index.html",
-    posts=posts,
-    comments=comments,
-    current_user=current_user,
-    unread_count=unread_count,
-    unread_messages=unread_messages
-)
+        "index.html",
+        posts=posts,
+        comments=comments,
+        current_user=current_user,
+        page=page,
+        has_next=has_next
+    )
+
 
 # INSCRIPTION
 @app.route("/register", methods=["GET", "POST"])
@@ -296,6 +375,9 @@ def register():
 
         if not username or not email or len(password) < 6:
             return "Remplis tous les champs. Mot de passe : 6 caractères minimum.", 400
+
+        if "@" not in email or len(email) > 254 or len(username) > 60:
+            return "Email ou nom invalide.", 400
 
         con = get_db()
 
@@ -409,6 +491,7 @@ def create_post():
 
     return redirect(url_for("index"))
 
+
 # REACTIONS AUX PUBLICATIONS
 @app.route("/react/<int:post_id>", methods=["POST"])
 @login_required
@@ -469,8 +552,9 @@ def react(post_id):
     con.commit()
     con.close()
 
-    return redirect(request.referrer or url_for("index"))
-    
+    return redirect_back()
+
+
 # COMMENTAIRES
 @app.route("/comment/<int:post_id>", methods=["POST"])
 @login_required
@@ -508,27 +592,11 @@ def comment(post_id):
             post["user_id"],
             session["username"] + " a commenté votre publication."
         ))
-        
-    # Migration automatique des profils
-    columns = [
-        row["name"]
-        for row in con.execute("PRAGMA table_info(users)").fetchall()
-    ]
 
-    if "bio" not in columns:
-        con.execute("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''")
-
-    if "city" not in columns:
-        con.execute("ALTER TABLE users ADD COLUMN city TEXT DEFAULT ''")
-
-    if "cover_pic" not in columns:
-        con.execute("ALTER TABLE users ADD COLUMN cover_pic TEXT")
-    
     con.commit()
     con.close()
 
-    return redirect(request.referrer or url_for("index"))
-
+    return redirect_back()
 
 
 # PROFIL UTILISATEUR
@@ -654,8 +722,11 @@ def edit_profile():
     con.close()
     return render_template("edit_profile.html", user=user)
 
+
 # SUIVRE / NE PLUS SUIVRE
-@app.route("/follow/<int:user_id>")
+# GET est conservé pour ne pas casser le lien actuel dans profile.html.
+# Quand on corrigera profile.html, on passera en POST uniquement.
+@app.route("/follow/<int:user_id>", methods=["GET", "POST"])
 @login_required
 def follow(user_id):
     if user_id == session["user_id"]:
@@ -741,6 +812,7 @@ def notifications():
     con.close()
 
     return render_template("notifications.html", notes=notes)
+
 
 # LISTE DES CONVERSATIONS
 @app.route("/conversations")
@@ -832,6 +904,7 @@ def messages(user_id):
         "messages.html", msgs=msgs, other_user=other_user
     )
 
+
 @app.route("/api/messages/<int:user_id>", methods=["GET", "POST"])
 @login_required
 def messages_api(user_id):
@@ -916,9 +989,6 @@ def messages_api(user_id):
 
     return jsonify([dict(message) for message in messages_list])
 
-@app.errorhandler(413)
-def file_too_large(error):
-    return "Fichier trop volumineux. Maximum : 5 Mo.", 413
 
 @app.route("/search")
 @login_required
@@ -930,13 +1000,15 @@ def search():
     if query:
         db = get_db()
 
+        # Recherche par nom uniquement : on ne permet plus de deviner
+        # l'email des membres.
         users = db.execute("""
             SELECT id, username, profile_pic
             FROM users
-            WHERE username LIKE ? OR email LIKE ?
+            WHERE username LIKE ?
             ORDER BY username ASC
             LIMIT 30
-        """, (f"%{query}%", f"%{query}%")).fetchall()
+        """, (f"%{query}%",)).fetchall()
 
         db.close()
 
@@ -945,6 +1017,22 @@ def search():
         users=users,
         query=query
     )
+
+
+@app.errorhandler(413)
+def file_too_large(error):
+    return "Fichier trop volumineux. Maximum : 5 Mo.", 413
+
+
+@app.errorhandler(404)
+def page_not_found(error):
+    return "Page introuvable.", 404
+
+
+@app.errorhandler(500)
+def server_error(error):
+    return "Erreur du serveur. Réessaie dans un instant.", 500
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
