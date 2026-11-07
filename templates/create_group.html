@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Créer un groupe - Licorne Rouge</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            color: #222;
+        }
+
+        header {
+            background: white;
+            padding: 16px 6%;
+            box-shadow: 0 2px 8px #00000012;
+        }
+
+        header a {
+            color: #d62936;
+            font-size: 23px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: 35px auto;
+            padding: 0 16px;
+        }
+
+        .form-card {
+            background: white;
+            padding: 28px;
+            border-radius: 14px;
+            box-shadow: 0 3px 12px #0000000d;
+        }
+
+        h1 { margin-top: 0; }
+
+        .subtitle {
+            color: #777;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin: 18px 0 8px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #ddd;
+            border-radius: 9px;
+            font-size: 15px;
+            font-family: Arial, sans-serif;
+        }
+
+        textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #d62936;
+        }
+
+        .help {
+            color: #888;
+            font-size: 13px;
+            margin-top: 6px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 9px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .submit {
+            background: #d62936;
+            color: white;
+        }
+
+        .cancel {
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        @media(max-width: 500px) {
+            .form-card { padding: 20px; }
+            .actions { flex-direction: column; }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <a href="{{ url_for('index') }}">🦄 Licorne Rouge</a>
+</header>
+
+<main class="container">
+
+    <section class="form-card">
+
+        <h1>👥 Créer un groupe</h1>
+
+        <p class="subtitle">
+            Crée ta communauté et rassemble des personnes qui partagent
+            les mêmes intérêts.
+        </p>
+
+        <form method="POST"
+              action="{{ url_for('create_group') }}"
+              enctype="multipart/form-data">
+
+            <label for="name">Nom du groupe *</label>
+            <input
+                type="text"
+                id="name"
+                name="name"
+                maxlength="100"
+                placeholder="Exemple : Les passionnés de technologie"
+                required
+            >
+
+            <label for="description">Description</label>
+            <textarea
+                id="description"
+                name="description"
+                maxlength="2000"
+                placeholder="Présente ton groupe et explique son objectif..."
+            ></textarea>
+
+            <label for="category">Catégorie</label>
+            <select id="category" name="category">
+                <option value="Autre">Autre</option>
+                <option value="Culture">Culture</option>
+                <option value="Sport">Sport</option>
+                <option value="Technologie">Technologie</option>
+                <option value="Commerce">Commerce</option>
+                <option value="Éducation">Éducation</option>
+                <option value="Entraide">Entraide</option>
+                <option value="Voyage">Voyage</option>
+                <option value="Emploi">Emploi</option>
+                <option value="Communauté">Communauté</option>
+            </select>
+
+            <label for="privacy">Confidentialité</label>
+            <select id="privacy" name="privacy">
+                <option value="public">🌍 Public — Tout le monde peut voir le groupe</option>
+                <option value="private">🔒 Privé — Groupe réservé aux membres</option>
+            </select>
+
+            <label for="profile_pic">Photo du groupe</label>
+            <input
+                type="file"
+                id="profile_pic"
+                name="profile_pic"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+            >
+            <p class="help">Formats acceptés : JPG, PNG, GIF et WEBP.</p>
+
+            <label for="cover_pic">Image de couverture</label>
+            <input
+                type="file"
+                id="cover_pic"
+                name="cover_pic"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+            >
+
+            <div class="actions">
+                <a href="{{ url_for('groups') }}" class="btn cancel">
+                    Annuler
+                </a>
+
+                <button type="submit" class="btn submit">
+                    Créer mon groupe
+                </button>
+            </div>
+
+        </form>
+
+    </section>
+
+</main>
+
+</body>
+</html>

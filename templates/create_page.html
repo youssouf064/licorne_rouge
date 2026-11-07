@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Créer une Page - Licorne Rouge</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            color: #222;
+        }
+
+        header {
+            background: white;
+            padding: 16px 6%;
+            box-shadow: 0 2px 8px #00000012;
+        }
+
+        header a {
+            color: #d62936;
+            font-size: 22px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: 35px auto;
+            padding: 0 15px;
+        }
+
+        .card {
+            background: white;
+            padding: 28px;
+            border-radius: 14px;
+            box-shadow: 0 3px 15px #0000000c;
+        }
+
+        h1 { margin-top: 0; }
+
+        .subtitle {
+            color: #777;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin: 18px 0 8px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #ddd;
+            border-radius: 9px;
+            font-size: 15px;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        input[type="file"] {
+            background: #fafafa;
+        }
+
+        .hint {
+            color: #888;
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        button, .cancel {
+            flex: 1;
+            padding: 13px;
+            border: 0;
+            border-radius: 9px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button {
+            background: #d62936;
+            color: white;
+        }
+
+        .cancel {
+            background: #eee;
+            color: #444;
+        }
+
+        @media(max-width: 500px) {
+            .card { padding: 20px; }
+            .buttons { flex-direction: column; }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <a href="{{ url_for('index') }}">🦄 Licorne Rouge</a>
+</header>
+
+<main class="container">
+    <section class="card">
+
+        <h1>Créer une Page</h1>
+
+        <p class="subtitle">
+            Présente ton entreprise, ton restaurant, ton association
+            ou ta communauté aux membres de Licorne Rouge.
+        </p>
+
+        <form method="POST"
+              action="{{ url_for('create_page') }}"
+              enctype="multipart/form-data">
+
+            <label for="name">Nom de la Page *</label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   maxlength="100"
+                   placeholder="Exemple : Restaurant Le Sahel"
+                   required>
+
+            <label for="category">Catégorie</label>
+            <select id="category" name="category">
+                <option value="Entreprise">Entreprise</option>
+                <option value="Restaurant">Restaurant</option>
+                <option value="Commerce">Commerce</option>
+                <option value="Association">Association</option>
+                <option value="Éducation">Éducation</option>
+                <option value="Sport">Sport</option>
+                <option value="Communauté">Communauté</option>
+                <option value="Média">Média</option>
+                <option value="Autre" selected>Autre</option>
+            </select>
+
+            <label for="description">Description</label>
+            <textarea id="description"
+                      name="description"
+                      maxlength="1000"
+                      placeholder="Présente ton activité ou ta communauté..."></textarea>
+
+            <label for="profile_pic">Logo de la Page</label>
+            <input type="file"
+                   id="profile_pic"
+                   name="profile_pic"
+                   accept="image/png,image/jpeg,image/webp,image/gif">
+
+            <div class="hint">Formats acceptés : JPG, PNG, WEBP et GIF.</div>
+
+            <label for="cover_pic">Photo de couverture</label>
+            <input type="file"
+                   id="cover_pic"
+                   name="cover_pic"
+                   accept="image/png,image/jpeg,image/webp,image/gif">
+
+            <div class="hint">Choisis une image qui représente ta Page.</div>
+
+            <div class="buttons">
+                <a href="{{ url_for('pages') }}" class="cancel">Annuler</a>
+                <button type="submit">Créer ma Page</button>
+            </div>
+
+        </form>
+    </section>
+</main>
+
+</body>
+</html>

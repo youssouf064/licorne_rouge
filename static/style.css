@@ -361,6 +361,7 @@ a {
     font-weight: bold;
 }
 
+
 /* TELEPHONE ET TABLETTE */
 
 @media (max-width: 1050px) {
@@ -374,31 +375,48 @@ a {
     }
 }
 
+/* TELEPHONES EN PORTRAIT */
+
 @media (max-width: 700px) {
     .topbar {
-        padding: 0 12px;
-        height: 58px;
+        height: auto;
+        min-height: 58px;
+        padding: 10px 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
     }
 
     .brand {
         font-size: 19px;
-    }
-
-    .search {
-        display: none;
+        flex: 1;
     }
 
     .top-actions {
-        gap: 6px;
+        gap: 5px;
     }
 
     .top-actions a {
-        font-size: 18px;
+        font-size: 17px;
         padding: 7px;
+    }
+
+    .search {
+        display: block;
+        order: 3;
+        flex: 1 0 100%;
+        width: 100%;
+        max-width: none;
+    }
+
+    .search input {
+        width: 100%;
+        padding: 11px 15px;
     }
 
     .layout {
         display: block;
+        width: 100%;
         margin: 15px auto;
         padding: 0 10px;
     }
@@ -423,5 +441,125 @@ a {
 
     .feed-heading {
         gap: 8px;
+    }
+
+    .post-image {
+        max-height: 400px;
+    }
+}
+
+/* TELEPHONES EN PAYSAGE */
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .topbar {
+        height: auto;
+        min-height: 55px;
+        padding: 7px 12px;
+        gap: 10px;
+    }
+
+    .brand {
+        font-size: 19px;
+    }
+
+    .search {
+        display: block;
+        flex: 1;
+        min-width: 120px;
+        max-width: 350px;
+    }
+
+    .search input {
+        width: 100%;
+        padding: 9px 12px;
+    }
+
+    .top-actions {
+        gap: 5px;
+    }
+
+    .top-actions a {
+        font-size: 17px;
+        padding: 7px;
+    }
+
+    .layout {
+        display: block;
+        max-width: 750px;
+        margin: 15px auto;
+        padding: 0 10px;
+    }
+
+    .sidebar,
+    .rightbar {
+        display: none;
+    }
+}
+
+/* ACTIONS DU PROPRIETAIRE D'UNE PUBLICATION */
+
+.post-owner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+    align-items: center;
+}
+
+.post-owner-actions a,
+.post-owner-actions button {
+    border: none;
+    background: #f0f2f5;
+    color: #444;
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.post-owner-actions a:hover {
+    background: #f9dfe2;
+    color: var(--primary);
+}
+
+.post-owner-actions button:hover {
+    background: #ffe1e1;
+    color: #c62828;
+}
+
+.post-owner-actions form {
+    margin: 0;
+}
+
+@media (max-width: 700px) {
+    .post-owner-actions {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
+/* CORRECTION : MENU GAUCHE SUR ORDINATEUR */
+@media (min-width: 701px) {
+    .layout {
+        display: grid;
+        grid-template-columns: 250px minmax(0, 650px);
+        justify-content: center;
+        gap: 25px;
+    }
+
+    .sidebar {
+        display: block !important;
+        visibility: visible !important;
+        position: sticky;
+        top: 85px;
+        width: 250px;
+        min-width: 0;
+    }
+
+    .sidebar .menu-link {
+        display: block;
+        visibility: visible;
     }
 }

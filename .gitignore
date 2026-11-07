@@ -3,3 +3,14 @@ __pycache__/
 *.pyc
 database.db
 *.sqlite3
+# Sauvegardes et fichiers temporaires
+*.backup
+*.backup_*
+*.save
+*_backup.py
+app_avant_context_processor.py
+database_backup.db
+sauvegardes/
+# Images ajoutées localement (sauf image par défaut)
+static/images/*
+!static/images/default.png

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Groupes - Licorne Rouge</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            color: #222;
+        }
+
+        .topbar {
+            background: white;
+            padding: 15px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px #00000012;
+        }
+
+        .brand {
+            color: #d62936;
+            font-size: 23px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .top-links a {
+            text-decoration: none;
+            color: #444;
+            margin-left: 18px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 0 18px;
+        }
+
+        .heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        h1 { margin: 0 0 8px; }
+
+        .subtitle { color: #777; }
+
+        .btn {
+            display: inline-block;
+            background: #d62936;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 9px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .group-card {
+            background: white;
+            border-radius: 13px;
+            overflow: hidden;
+            box-shadow: 0 3px 12px #0000000d;
+        }
+
+        .cover {
+            height: 125px;
+            background: linear-gradient(135deg, #d62936, #ff9b9b);
+            background-size: cover;
+            background-position: center;
+        }
+
+        .group-info { padding: 15px; }
+
+        .group-logo {
+            width: 68px;
+            height: 68px;
+            object-fit: cover;
+            border-radius: 14px;
+            border: 3px solid white;
+            margin-top: -45px;
+            position: relative;
+            background: white;
+        }
+
+        .group-name {
+            font-size: 19px;
+            font-weight: bold;
+            margin: 10px 0 6px;
+        }
+
+        .group-name a {
+            color: #222;
+            text-decoration: none;
+        }
+
+        .category, .description, .details {
+            color: #777;
+            font-size: 14px;
+            margin: 7px 0;
+        }
+
+        .description {
+            min-height: 40px;
+            line-height: 1.4;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .card-actions a {
+            flex: 1;
+            text-align: center;
+            padding: 11px 8px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        .card-actions a.primary {
+            background: #d62936;
+            color: white;
+        }
+
+        .empty {
+            background: white;
+            border-radius: 12px;
+            padding: 35px 20px;
+            color: #777;
+            text-align: center;
+        }
+
+        @media(max-width: 600px) {
+            .topbar { padding: 13px 15px; }
+            .top-links a { margin-left: 9px; font-size: 13px; }
+            .brand { font-size: 19px; }
+            .container { margin: 20px auto; }
+            .heading { align-items: flex-start; }
+            .heading .btn { width: 100%; text-align: center; }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="topbar">
+    <a href="{{ url_for('index') }}" class="brand">🦄 Licorne Rouge</a>
+
+    <nav class="top-links">
+        <a href="{{ url_for('index') }}">Accueil</a>
+        <a href="{{ url_for('profile', user_id=session['user_id']) }}">Profil</a>
+    </nav>
+</header>
+
+<main class="container">
+
+    <div class="heading">
+        <div>
+            <h1>👥 Groupes</h1>
+            <p class="subtitle">
+                Rejoins des communautés et échange avec les autres membres.
+            </p>
+        </div>
+
+        <a href="{{ url_for('create_group') }}" class="btn">
+            + Créer un groupe
+        </a>
+    </div>
+
+    {% if groups %}
+
+    <div class="grid">
+        {% for group in groups %}
+        <article class="group-card">
+
+            <div class="cover"
+                {% if group.cover_pic %}
+                style="background-image: url('{{ url_for('static', filename='images/' ~ group.cover_pic) }}')"
+                {% endif %}>
+            </div>
+
+            <div class="group-info">
+
+                {% if group.profile_pic %}
+                    <img class="group-logo"
+                         src="{{ url_for('static', filename='images/' ~ group.profile_pic) }}"
+                         alt="Photo du groupe">
+                {% else %}
+                    <div class="group-logo"
+                         style="display:flex;align-items:center;justify-content:center;font-size:30px;">
+                        👥
+                    </div>
+                {% endif %}
+
+                <div class="group-name">
+                    <a href="{{ url_for('group_detail', group_id=group.id) }}">
+                        {{ group.name }}
+                    </a>
+                </div>
+
+                <div class="category">
+                    {{ group.category or 'Autre' }}
+                    ·
+                    {% if group.privacy == 'private' %}
+                        🔒 Groupe privé
+                    {% else %}
+                        🌍 Groupe public
+                    {% endif %}
+                </div>
+
+                <p class="description">
+                    {{ group.description or 'Bienvenue dans ce groupe !' }}
+                </p>
+
+                <p class="details">
+                    👥 {{ group.member_count }} membre(s)
+                </p>
+
+                <p class="details">
+                    Créé par {{ group.owner_name }}
+                </p>
+
+                <div class="card-actions">
+                    <a class="primary"
+                       href="{{ url_for('group_detail', group_id=group.id) }}">
+                        Voir le groupe
+                    </a>
+                </div>
+
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+
+    {% else %}
+
+    <div class="empty">
+        <h2>👥 Aucun groupe pour le moment</h2>
+        <p>Sois le premier à créer une communauté sur Licorne Rouge !</p>
+        <a href="{{ url_for('create_group') }}" class="btn">
+            Créer mon premier groupe
+        </a>
+    </div>
+
+    {% endif %}
+
+</main>
+
+</body>
+</html>

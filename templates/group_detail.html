@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ group.name }} - Licorne Rouge</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            color: #222;
+        }
+
+        .topbar {
+            background: white;
+            padding: 15px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px #00000012;
+        }
+
+        .brand {
+            color: #d62936;
+            font-size: 22px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .top-links a {
+            text-decoration: none;
+            color: #444;
+            margin-left: 16px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 25px auto;
+            padding: 0 15px;
+        }
+
+        .group-card {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 3px 12px #0000000d;
+        }
+
+        .cover {
+            height: 260px;
+            background: linear-gradient(135deg, #d62936, #ff9b9b);
+            background-size: cover;
+            background-position: center;
+        }
+
+        .group-info {
+            padding: 20px 25px;
+        }
+
+        .identity {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-top: -65px;
+            position: relative;
+        }
+
+        .group-logo {
+            width: 115px;
+            height: 115px;
+            border-radius: 18px;
+            border: 5px solid white;
+            object-fit: cover;
+            background: white;
+        }
+
+        .group-name {
+            font-size: 27px;
+            margin: 55px 0 5px;
+            overflow-wrap: anywhere;
+        }
+
+        .muted {
+            color: #777;
+            font-size: 14px;
+        }
+
+        .description {
+            line-height: 1.6;
+            margin: 20px 0;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 9px;
+            background: #d62936;
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn.secondary {
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        .btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        .content-layout {
+            display: grid;
+            grid-template-columns: 300px minmax(0, 1fr);
+            gap: 20px;
+            margin-top: 22px;
+        }
+
+        .panel, .post-card, .private-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 9px #0000000b;
+        }
+
+        .panel h3, .posts-title {
+            margin-top: 0;
+        }
+
+        .panel p {
+            color: #555;
+            line-height: 1.5;
+        }
+
+        .post-card {
+            margin-bottom: 15px;
+        }
+
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #eee;
+        }
+
+        .post-content {
+            line-height: 1.6;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .post-image {
+            width: 100%;
+            max-height: 450px;
+            object-fit: contain;
+            border-radius: 10px;
+            margin-top: 12px;
+            background: #f5f5f5;
+        }
+
+        .empty, .private-box {
+            text-align: center;
+            color: #777;
+            line-height: 1.6;
+        }
+
+        @media(max-width: 700px) {
+            .topbar { padding: 13px 15px; }
+            .brand { font-size: 18px; }
+            .top-links a { margin-left: 8px; font-size: 12px; }
+            .cover { height: 170px; }
+            .group-info { padding: 15px; }
+            .identity { gap: 12px; }
+            .group-logo { width: 85px; height: 85px; }
+            .group-name { font-size: 21px; margin-top: 48px; }
+            .content-layout { grid-template-columns: 1fr; }
+            .actions .btn { flex: 1; text-align: center; }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="topbar">
+    <a href="{{ url_for('index') }}" class="brand">🦄 Licorne Rouge</a>
+
+    <nav class="top-links">
+        <a href="{{ url_for('groups') }}">Groupes</a>
+        <a href="{{ url_for('index') }}">Accueil</a>
+        <a href="{{ url_for('profile', user_id=session['user_id']) }}">Profil</a>
+    </nav>
+</header>
+
+<main class="container">
+
+    <section class="group-card">
+
+        <div class="cover"
+            {% if group.cover_pic %}
+            style="background-image: url('{{ url_for('static', filename='images/' ~ group.cover_pic) }}');"
+            {% endif %}>
+        </div>
+
+        <div class="group-info">
+
+            <div class="identity">
+                {% if group.profile_pic %}
+                    <img class="group-logo"
+                         src="{{ url_for('static', filename='images/' ~ group.profile_pic) }}"
+                         alt="Photo du groupe">
+                {% else %}
+                    <div class="group-logo"></div>
+                {% endif %}
+
+                <div>
+                    <h1 class="group-name">{{ group.name }}</h1>
+                    <div class="muted">
+                        {% if group.privacy == 'private' %}
+                            🔒 Groupe privé
+                        {% else %}
+                            🌍 Groupe public
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <p class="description">
+                {{ group.description or "Aucune description pour ce groupe." }}
+            </p>
+
+            <div class="muted">
+                📁 {{ group.category }}
+                &nbsp; · &nbsp;
+                👥 {{ member_count }} membre(s)
+                &nbsp; · &nbsp;
+                Créé par {{ group.owner_name }}
+            </div>
+
+            <div class="actions">
+
+                {% if is_admin %}
+                    <span class="btn">👑 Administrateur</span>
+
+                {% elif is_member %}
+                    <span class="btn">✓ Membre</span>
+
+                    <form method="POST"
+                          action="{{ url_for('leave_group', group_id=group.id) }}"
+                          onsubmit="return confirm('Veux-tu vraiment quitter ce groupe ?');">
+                        <button type="submit" class="btn secondary">
+                            Quitter le groupe
+                        </button>
+                    </form>
+
+                {% elif membership and membership.status == 'pending' %}
+                    <span class="btn secondary">
+                        ⏳ Demande en attente
+                    </span>
+
+                    <form method="POST"
+                          action="{{ url_for('leave_group', group_id=group.id) }}">
+                        <button type="submit" class="btn secondary">
+                            Annuler ma demande
+                        </button>
+                    </form>
+
+                {% else %}
+                    <form method="POST"
+                          action="{{ url_for('join_group', group_id=group.id) }}">
+                        <button type="submit" class="btn">
+                            {% if group.privacy == 'private' %}
+                                Demander à rejoindre
+                            {% else %}
+                                Rejoindre le groupe
+                            {% endif %}
+                        </button>
+                    </form>
+                {% endif %}
+
+                <a href="{{ url_for('groups') }}" class="btn secondary">
+                    Retour aux groupes
+                </a>
+
+            </div>
+
+        </div>
+    </section>
+
+    <div class="content-layout">
+
+        <aside class="panel">
+            <h3>À propos du groupe</h3>
+
+            <p><strong>Nom :</strong> {{ group.name }}</p>
+            <p><strong>Catégorie :</strong> {{ group.category }}</p>
+            <p><strong>Confidentialité :</strong>
+                {{ "Privé" if group.privacy == "private" else "Public" }}
+            </p>
+            <p><strong>Administrateur :</strong> {{ group.owner_name }}</p>
+            <p><strong>Membres :</strong> {{ member_count }}</p>
+        </aside>
+
+        <section>
+
+            {% if is_member %}
+                <div class="panel group-composer">
+                    <h3>✍️ Publier dans ce groupe</h3>
+
+                    <form method="POST"
+                          action="{{ url_for('create_group_post', group_id=group.id) }}"
+                          enctype="multipart/form-data">
+
+                        <textarea
+                            name="content"
+                            rows="4"
+                            maxlength="5000"
+                            placeholder="Quoi de neuf dans le groupe ?"
+                            style="width:100%; box-sizing:border-box; padding:12px; border-radius:10px;"
+                        ></textarea>
+
+                        <div style="margin:12px 0;">
+                            <label for="group-post-image">
+                                📷 Ajouter une photo
+                            </label>
+                            <input
+                                type="file"
+                                id="group-post-image"
+                                name="image"
+                                accept="image/*"
+                            >
+                        </div>
+
+                        <button type="submit" class="btn">
+                            Publier
+                        </button>
+
+                    </form>
+                </div>
+            {% endif %}
+
+            <h2 class="posts-title">Publications du groupe</h2>
+
+            {% if not can_view_posts %}
+                <div class="private-box">
+                    <h3>🔒 Groupe privé</h3>
+                    <p>
+                        Les publications de ce groupe sont réservées
+                        aux membres approuvés.
+                    </p>
+                </div>
+
+            {% elif posts %}
+                {% for post in posts %}
+                    <article class="post-card">
+
+                        <div class="post-header">
+                            {% if post.user_profile_pic %}
+                                <img class="avatar"
+                                     src="{{ url_for('static', filename='images/' ~ post.user_profile_pic) }}"
+                                     alt="Profil">
+                            {% else %}
+                                <div class="avatar"></div>
+                            {% endif %}
+
+                            <div>
+                                <strong>{{ post.username }}</strong>
+                                <div class="muted">{{ post.date }}</div>
+                            </div>
+                        </div>
+
+                        {% if post.content %}
+                            <div class="post-content">{{ post.content }}</div>
+                        {% endif %}
+
+                        {% if post.image %}
+                            <img class="post-image"
+                                 src="{{ url_for('static', filename='images/' ~ post.image) }}"
+                                 alt="Image de publication">
+                        {% endif %}
+
+                        <div class="group-reaction-summary"
+                             style="margin-top:15px; color:#666; font-size:14px;">
+
+                            {% for reaction in post.reaction_counts %}
+                                {% if reaction.reaction == 'like' %}
+                                    👍
+                                {% elif reaction.reaction == 'love' %}
+                                    ❤️
+                                {% elif reaction.reaction == 'haha' %}
+                                    😂
+                                {% elif reaction.reaction == 'wow' %}
+                                    😮
+                                {% endif %}
+                                {{ reaction.total }}
+                            {% endfor %}
+
+                        </div>
+
+                        {% if is_member %}
+                            <div class="group-reaction-buttons"
+                                 style="display:flex; flex-wrap:wrap; gap:8px; margin:12px 0;">
+
+                                <form method="POST"
+                                      action="{{ url_for('react_to_group_post', post_id=post.id) }}">
+                                    <input type="hidden" name="reaction" value="like">
+                                    <button type="submit"
+                                            class="btn"
+                                            style="{{ 'background:#d62936;color:white;' if post.user_reaction == 'like' else '' }}">
+                                        👍 J’aime
+                                    </button>
+                                </form>
+
+                                <form method="POST"
+                                      action="{{ url_for('react_to_group_post', post_id=post.id) }}">
+                                    <input type="hidden" name="reaction" value="love">
+                                    <button type="submit"
+                                            class="btn"
+                                            style="{{ 'background:#d62936;color:white;' if post.user_reaction == 'love' else '' }}">
+                                        ❤️ J’adore
+                                    </button>
+                                </form>
+
+                                <form method="POST"
+                                      action="{{ url_for('react_to_group_post', post_id=post.id) }}">
+                                    <input type="hidden" name="reaction" value="haha">
+                                    <button type="submit"
+                                            class="btn"
+                                            style="{{ 'background:#d62936;color:white;' if post.user_reaction == 'haha' else '' }}">
+                                        😂 Haha
+                                    </button>
+                                </form>
+
+                                <form method="POST"
+                                      action="{{ url_for('react_to_group_post', post_id=post.id) }}">
+                                    <input type="hidden" name="reaction" value="wow">
+                                    <button type="submit"
+                                            class="btn"
+                                            style="{{ 'background:#d62936;color:white;' if post.user_reaction == 'wow' else '' }}">
+                                        😮 Waouh
+                                    </button>
+                                </form>
+
+                            </div>
+                        {% endif %}
+
+                        <div class="group-comments"
+                             style="border-top:1px solid #eee; padding-top:12px; margin-top:12px;">
+
+                            <h4>💬 Commentaires ({{ post.comments|length }})</h4>
+
+                            {% for comment in post.comments %}
+                                <div style="display:flex; gap:10px; margin:12px 0;">
+
+                                    {% if comment.user_profile_pic %}
+                                        <img
+                                            src="{{ url_for('static', filename='images/' ~ comment.user_profile_pic) }}"
+                                            alt="Profil"
+                                            style="width:35px;height:35px;border-radius:50%;object-fit:cover;">
+                                    {% else %}
+                                        <div class="avatar"
+                                             style="width:35px;height:35px;"></div>
+                                    {% endif %}
+
+                                    <div style="background:#f5f5f5;padding:10px;border-radius:12px;flex:1;">
+                                        <strong>{{ comment.username }}</strong>
+                                        <div>{{ comment.content }}</div>
+                                        <small class="muted">{{ comment.date }}</small>
+                                    </div>
+
+                                </div>
+                            {% else %}
+                                <p class="muted">Aucun commentaire pour le moment.</p>
+                            {% endfor %}
+
+                            {% if is_member %}
+                                <form method="POST"
+                                      action="{{ url_for('comment_group_post', post_id=post.id) }}"
+                                      style="margin-top:12px;">
+
+                                    <textarea
+                                        name="content"
+                                        rows="2"
+                                        maxlength="2000"
+                                        required
+                                        placeholder="Écrire un commentaire..."
+                                        style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:10px;"></textarea>
+
+                                    <button type="submit" class="btn" style="margin-top:8px;">
+                                        Commenter
+                                    </button>
+                                </form>
+                            {% endif %}
+
+                        </div>
+
+                    </article>
+                {% endfor %}
+
+            {% else %}
+                <div class="empty">
+                    <h3>Aucune publication pour le moment</h3>
+                    <p>Les publications de ce groupe apparaîtront ici.</p>
+                </div>
+            {% endif %}
+
+        </section>
+
+    </div>
+
+</main>
+
+</body>
+</html>

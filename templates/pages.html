@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pages - Licorne Rouge</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            color: #222;
+        }
+
+        .topbar {
+            background: white;
+            padding: 15px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px #00000012;
+        }
+
+        .brand {
+            color: #d62936;
+            font-size: 23px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .top-links a {
+            text-decoration: none;
+            color: #444;
+            margin-left: 18px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 0 18px;
+        }
+
+        .heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        h1 { margin: 0 0 8px; }
+
+        .subtitle { color: #777; }
+
+        .btn {
+            display: inline-block;
+            background: #d62936;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 9px;
+            text-decoration: none;
+            font-weight: bold;
+            border: none;
+        }
+
+        .section-title {
+            margin: 30px 0 15px;
+            font-size: 21px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .page-card {
+            background: white;
+            border-radius: 13px;
+            overflow: hidden;
+            box-shadow: 0 3px 12px #0000000d;
+        }
+
+        .cover {
+            height: 120px;
+            background: linear-gradient(135deg, #d62936, #ff9b9b);
+            background-size: cover;
+            background-position: center;
+        }
+
+        .page-info { padding: 15px; }
+
+        .page-logo {
+            width: 65px;
+            height: 65px;
+            object-fit: cover;
+            border-radius: 14px;
+            border: 3px solid white;
+            margin-top: -45px;
+            position: relative;
+            background: white;
+        }
+
+        .page-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0 5px;
+        }
+
+        .page-name a {
+            color: #222;
+            text-decoration: none;
+        }
+
+        .category, .description, .followers {
+            color: #777;
+            font-size: 14px;
+            margin: 7px 0;
+        }
+
+        .description {
+            min-height: 38px;
+            line-height: 1.4;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .card-actions a {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        .empty {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            color: #777;
+            text-align: center;
+        }
+
+        @media(max-width: 600px) {
+            .topbar { padding: 13px 15px; }
+            .top-links a { margin-left: 9px; font-size: 13px; }
+            .brand { font-size: 19px; }
+            .container { margin: 20px auto; }
+            .heading { align-items: flex-start; }
+            .heading .btn { width: 100%; text-align: center; }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="topbar">
+    <a href="{{ url_for('index') }}" class="brand">🦄 Licorne Rouge</a>
+
+    <nav class="top-links">
+        <a href="{{ url_for('index') }}">Accueil</a>
+        <a href="{{ url_for('profile', user_id=session['user_id']) }}">Profil</a>
+    </nav>
+</header>
+
+<main class="container">
+
+    <div class="heading">
+        <div>
+            <h1>Découvrir les Pages</h1>
+            <div class="subtitle">
+                Les entreprises, associations et communautés de Licorne Rouge.
+            </div>
+        </div>
+
+        <a href="{{ url_for('create_page') }}" class="btn">
+            + Créer une Page
+        </a>
+    </div>
+
+    <h2 class="section-title">Mes Pages</h2>
+
+    {% if my_pages %}
+    <div class="grid">
+        {% for page in my_pages %}
+        <article class="page-card">
+
+            <div class="cover"
+                {% if page['cover_pic'] %}
+                style="background-image:url('{{ url_for('static', filename='images/' + page['cover_pic']) }}')"
+                {% endif %}>
+            </div>
+
+            <div class="page-info">
+                {% if page['profile_pic'] %}
+                <img class="page-logo"
+                     src="{{ url_for('static', filename='images/' + page['profile_pic']) }}"
+                     alt="Logo">
+                {% else %}
+                <div class="page-logo"></div>
+                {% endif %}
+
+                <div class="page-name">
+                    <a href="{{ url_for('page_detail', page_id=page['id']) }}">
+                        {{ page['name'] }}
+                    </a>
+                </div>
+
+                <div class="category">{{ page['category'] }}</div>
+
+                <div class="followers">
+                    👥 {{ page['followers_count'] }} abonnés
+                </div>
+
+                <div class="card-actions">
+                    <a href="{{ url_for('page_detail', page_id=page['id']) }}">
+                        Voir la Page
+                    </a>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">
+        Tu n'as pas encore créé de Page.
+        <br><br>
+        Crée ta première Page pour présenter ton activité ou ta communauté !
+    </div>
+    {% endif %}
+
+    <h2 class="section-title">Toutes les Pages</h2>
+
+    {% if all_pages %}
+    <div class="grid">
+        {% for page in all_pages %}
+        <article class="page-card">
+
+            <div class="cover"
+                {% if page['cover_pic'] %}
+                style="background-image:url('{{ url_for('static', filename='images/' + page['cover_pic']) }}')"
+                {% endif %}>
+            </div>
+
+            <div class="page-info">
+                {% if page['profile_pic'] %}
+                <img class="page-logo"
+                     src="{{ url_for('static', filename='images/' + page['profile_pic']) }}"
+                     alt="Logo">
+                {% else %}
+                <div class="page-logo"></div>
+                {% endif %}
+
+                <div class="page-name">
+                    <a href="{{ url_for('page_detail', page_id=page['id']) }}">
+                        {{ page['name'] }}
+                    </a>
+                </div>
+
+                <div class="category">
+                    {{ page['category'] }} · Par {{ page['owner_name'] }}
+                </div>
+
+                <div class="description">
+                    {{ page['description'] or 'Découvrez cette communauté.' }}
+                </div>
+
+                <div class="followers">
+                    👥 {{ page['followers_count'] }} abonnés
+                </div>
+
+                <div class="card-actions">
+                    <a href="{{ url_for('page_detail', page_id=page['id']) }}">
+                        Découvrir
+                    </a>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">Aucune Page n'a encore été créée.</div>
+    {% endif %}
+
+</main>
+
+</body>
+</html>

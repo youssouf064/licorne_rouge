@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Modifier ma publication - Licorne Rouge</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .edit-container {
+            max-width: 650px;
+            margin: 35px auto;
+            padding: 20px;
+        }
+
+        .edit-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        }
+
+        .edit-card h2 {
+            margin-bottom: 20px;
+        }
+
+        .edit-card textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 9px;
+            font-family: inherit;
+            font-size: 15px;
+            resize: vertical;
+        }
+
+        .current-image {
+            display: block;
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            margin: 15px 0;
+            border-radius: 9px;
+        }
+
+        .edit-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .edit-buttons button,
+        .edit-buttons a {
+            padding: 11px 18px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .save-button {
+            background: #d62936;
+            color: white;
+        }
+
+        .cancel-button {
+            background: #eee;
+            color: #333;
+        }
+
+        .file-input {
+            margin-top: 15px;
+        }
+
+        @media (max-width: 700px) {
+            .edit-container {
+                margin: 15px auto;
+                padding: 10px;
+            }
+
+            .edit-card {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header class="topbar">
+    <a href="/" class="brand">🦄 Licorne<span>Rouge</span></a>
+</header>
+
+<main class="edit-container">
+    <section class="edit-card">
+        <h2>✏️ Modifier ma publication</h2>
+
+        <form method="POST" enctype="multipart/form-data">
+            <label for="content">Texte de la publication</label>
+
+            <textarea id="content" name="content"
+                      placeholder="Que veux-tu partager ?">{{ post['content'] or '' }}</textarea>
+
+            {% if post['image'] %}
+                <p style="margin-top:15px;">Photo actuelle :</p>
+                <img class="current-image"
+                     src="{{ url_for('static', filename='images/' + post['image']) }}"
+                     alt="Photo actuelle">
+            {% endif %}
+
+            <div class="file-input">
+                <label for="image">Choisir une nouvelle photo (facultatif)</label>
+                <input type="file" id="image" name="image"
+                       accept="image/png,image/jpeg,image/gif,image/webp">
+            </div>
+
+            <div class="edit-buttons">
+                <button class="save-button" type="submit">
+                    Enregistrer les modifications
+                </button>
+
+                <a class="cancel-button" href="/">Annuler</a>
+            </div>
+        </form>
+    </section>
+</main>
+
+</body>
+</html>

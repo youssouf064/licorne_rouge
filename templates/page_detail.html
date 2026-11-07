@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page['name'] }} - Licorne Rouge</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #f0f2f5;
+            font-family: Arial, sans-serif;
+            color: #222;
+        }
+
+        header {
+            background: white;
+            padding: 15px 6%;
+            box-shadow: 0 2px 8px #00000012;
+        }
+
+        header a {
+            color: #d62936;
+            text-decoration: none;
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 850px;
+            margin: 25px auto;
+            padding: 0 15px;
+        }
+
+        .page-header, .card {
+            background: white;
+            border-radius: 13px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px #0000000b;
+        }
+
+        .cover {
+            height: 260px;
+            background: linear-gradient(135deg, #d62936, #ff9b9b);
+            background-size: cover;
+            background-position: center;
+        }
+
+        .page-info { padding: 20px 25px; }
+
+        .identity {
+            display: flex;
+            align-items: center;
+            gap: 17px;
+        }
+
+        .logo {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 15px;
+            border: 4px solid white;
+            background: #eee;
+            margin-top: -55px;
+        }
+
+        h1 { margin: 0 0 7px; font-size: 26px; }
+
+        .category, .description, .stats {
+            color: #777;
+            line-height: 1.5;
+            margin-top: 8px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 11px 17px;
+            border: none;
+            border-radius: 8px;
+            background: #d62936;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn.secondary {
+            background: #eee;
+            color: #333;
+        }
+
+        .card { padding: 20px; }
+
+        .card h2 {
+            font-size: 19px;
+            margin: 0 0 15px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 90px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 9px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            margin: 12px 0;
+        }
+
+        .post {
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
+        }
+
+        .post:last-child { border-bottom: none; }
+
+        .author {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .date {
+            color: #888;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .post-image {
+            display: block;
+            width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+            border-radius: 10px;
+            margin-top: 12px;
+            background: #f5f5f5;
+        }
+
+        .empty {
+            color: #888;
+            text-align: center;
+            padding: 20px;
+        }
+
+        @media(max-width: 600px) {
+            .cover { height: 170px; }
+            .page-info { padding: 15px; }
+            .logo { width: 75px; height: 75px; }
+            h1 { font-size: 21px; }
+            .identity { align-items: flex-end; }
+            .actions { flex-wrap: wrap; }
+            .btn { text-align: center; }
+        }
+    
+.post-actions {
+    display: flex;
+    align-items: center;
+    border-top: 1px solid #eee;
+    padding: 12px 0;
+    margin-top: 12px;
+}
+
+.action-btn {
+    border: none;
+    background: #f3f4f6;
+    color: #333;
+    padding: 9px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.action-btn:hover {
+    background: #ffe5e8;
+    color: #d62936;
+}
+
+.comments-section {
+    border-top: 1px solid #eee;
+    padding-top: 12px;
+}
+
+.comments-section h3 {
+    font-size: 15px;
+    margin-bottom: 12px;
+}
+
+.comment {
+    background: #f7f7f7;
+    padding: 10px 13px;
+    border-radius: 12px;
+    margin-bottom: 9px;
+}
+
+.comment p {
+    margin: 5px 0;
+    overflow-wrap: anywhere;
+}
+
+.comment small {
+    color: #777;
+}
+
+.comment-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.comment-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+    <a href="{{ url_for('index') }}">🦄 Licorne Rouge</a>
+</header>
+
+<main class="container">
+
+    <section class="page-header">
+
+        <div class="cover"
+            {% if page['cover_pic'] %}
+            style="background-image:url('{{ url_for('static', filename='images/' + page['cover_pic']) }}')"
+            {% endif %}>
+        </div>
+
+        <div class="page-info">
+
+            <div class="identity">
+                {% if page['profile_pic'] %}
+                <img class="logo"
+                     src="{{ url_for('static', filename='images/' + page['profile_pic']) }}"
+                     alt="Logo de la Page">
+                {% else %}
+                <div class="logo"></div>
+                {% endif %}
+
+                <div>
+                    <h1>{{ page['name'] }}</h1>
+                    <div class="category">{{ page['category'] }}</div>
+                </div>
+            </div>
+
+            <div class="description">
+                {{ page['description'] or 'Bienvenue sur notre Page.' }}
+            </div>
+
+            <div class="stats">
+                👥 {{ page['followers_count'] }} abonnés
+                · Créée par {{ page['owner_name'] }}
+            </div>
+
+            <div class="actions">
+
+                {% if not page['is_admin'] %}
+                <form method="POST"
+                      action="{{ url_for('follow_page', page_id=page['id']) }}">
+                    {% if page['is_following'] %}
+                    <button class="btn secondary" type="submit">
+                        Ne plus suivre
+                    </button>
+                    {% else %}
+                    <button class="btn" type="submit">
+                        + Suivre
+                    </button>
+                    {% endif %}
+                </form>
+                {% endif %}
+
+                <a class="btn secondary"
+                   href="{{ url_for('pages') }}">
+                    Toutes les Pages
+                </a>
+
+            </div>
+        </div>
+    </section>
+
+    {% if page['is_admin'] %}
+    <section class="card">
+        <h2>Publier sur cette Page</h2>
+
+        <form method="POST"
+              action="{{ url_for('create_page_post', page_id=page['id']) }}"
+              enctype="multipart/form-data">
+
+            <textarea name="content"
+                      maxlength="5000"
+                      placeholder="Que souhaitez-vous partager ?"></textarea>
+
+            <input type="file"
+                   name="image"
+                   accept="image/png,image/jpeg,image/webp,image/gif">
+
+            <button class="btn" type="submit">
+                Publier
+            </button>
+        </form>
+    </section>
+    {% endif %}
+
+    <section class="card">
+        <h2>Publications</h2>
+
+        {% if posts %}
+            {% for post in posts %}
+            <article class="post">
+
+                <div class="author">
+                    {{ post['username'] }}
+                </div>
+
+                {% if post['content'] %}
+                <div>{{ post['content'] }}</div>
+                {% endif %}
+
+                {% if post['image'] %}
+                <img class="post-image"
+                     src="{{ url_for('static', filename='images/' + post['image']) }}"
+                     alt="Publication">
+                {% endif %}
+
+                <div class="date">{{ post['date'] }}</div>
+
+                <div class="post-actions">
+                    <form method="POST"
+                          action="{{ url_for('like_page_post', post_id=post['id']) }}">
+                        <button type="submit" class="action-btn">
+                            {% if post['user_liked'] %}
+                                ❤️ J'aime déjà
+                            {% else %}
+                                🤍 J'aime
+                            {% endif %}
+                            ({{ post['likes_count'] }})
+                        </button>
+                    </form>
+                </div>
+
+                <div class="comments-section">
+                    <h3>💬 Commentaires ({{ post['comments']|length }})</h3>
+
+                    {% for comment in post['comments'] %}
+                    <div class="comment">
+                        <strong>{{ comment['username'] }}</strong>
+                        <p>{{ comment['content'] }}</p>
+                        <small>{{ comment['date'] }}</small>
+                    </div>
+                    {% endfor %}
+
+                    <form method="POST"
+                          action="{{ url_for('comment_page_post', post_id=post['id']) }}"
+                          class="comment-form">
+                        <input type="text"
+                               name="content"
+                               maxlength="2000"
+                               placeholder="Écrire un commentaire..."
+                               required>
+                        <button type="submit" class="action-btn">
+                            Commenter
+                        </button>
+                    </form>
+                </div>
+
+            </article>
+            {% endfor %}
+        {% else %}
+            <div class="empty">
+                Aucune publication pour le moment.
+            </div>
+        {% endif %}
+    </section>
+
+</main>
+
+</body>
+</html>

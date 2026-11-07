@@ -49,17 +49,22 @@
         }
 
         .post-stats {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
             padding: 12px 0;
-            color: #777;
-            border-bottom: 1px solid #eee;
+            color: #65676b;
+            font-size: 14px;
         }
 
         .post-actions {
             display: flex;
-            justify-content: space-around;
+            flex-wrap: wrap;
             gap: 8px;
+            align-items: center;
+            border-top: 1px solid #eee;
             padding: 12px 0;
-            border-bottom: 1px solid #eee;
         }
 
         .post-actions a {
@@ -90,6 +95,13 @@
         .comment-item strong {
             color: #d92335;
             margin-right: 5px;
+        }
+
+        .comment-item small {
+            display: block;
+            color: #888;
+            font-size: 11px;
+            margin-top: 5px;
         }
 
         .comment-form {
@@ -134,6 +146,61 @@
             margin-bottom: 5px;
         }
 
+        .reaction-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+
+        .reaction-form button,
+        .post-actions > a {
+            border: none;
+            border-radius: 20px;
+            background: #f0f2f5;
+            color: #444;
+            padding: 9px 13px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .reaction-form button:hover,
+        .post-actions > a:hover {
+            background: #ffe1e6;
+            color: #d6294b;
+            transform: translateY(-2px);
+        }
+
+        .reaction-form button:active {
+            transform: scale(0.96);
+        }
+
+        .notification-link,
+        .message-link {
+            position: relative;
+        }
+
+        .notification-badge,
+        .message-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #e02435;
+            color: white;
+            min-width: 19px;
+            height: 19px;
+            padding: 2px 5px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        }
+
         @media(max-width: 600px) {
             .post-actions a {
                 font-size: 13px;
@@ -148,81 +215,7 @@
                 width: 100%;
             }
         }
-        /* Réactions aux publications */
-.post-stats {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 0;
-    color: #65676b;
-    font-size: 14px;
-}
-
-.post-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    border-top: 1px solid #eee;
-    padding: 12px 0;
-}
-
-.reaction-form {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-}
-
-.reaction-form button,
-.post-actions > a {
-    border: none;
-    border-radius: 20px;
-    background: #f0f2f5;
-    color: #444;
-    padding: 9px 13px;
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.reaction-form button:hover,
-.post-actions > a:hover {
-    background: #ffe1e6;
-    color: #d6294b;
-    transform: translateY(-2px);
-}
-
-.reaction-form button:active {
-    transform: scale(0.96);
-}
-        .notification-link,
-        .message-link {
-            position: relative;
-        }
-
-        .notification-badge,
-        .message-badge {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background: #e02435;
-    color: white;
-    min-width: 19px;
-    height: 19px;
-    padding: 2px 5px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid white;
-}
     </style>
-    
 </head>
 
 <body>
@@ -244,11 +237,11 @@
             {% endif %}
         </a>
         <a href="/notifications" title="Notifications" class="notification-link">
-    🔔
-    {% if unread_count > 0 %}
-        <span class="notification-badge">{{ unread_count }}</span>
-    {% endif %}
-</a>
+            🔔
+            {% if unread_count > 0 %}
+                <span class="notification-badge">{{ unread_count }}</span>
+            {% endif %}
+        </a>
         <a href="/profile/{{ session.user_id }}" title="Mon profil">👤</a>
     </nav>
 </header>
@@ -301,7 +294,6 @@
             <p>Quoi de neuf aujourd'hui en Mauritanie ?</p>
         </div>
 
-        <!-- Création de publication -->
         <section class="composer">
 
             <div class="composer-heading">
@@ -363,6 +355,20 @@
                     <small>{{ post['date'] }}</small>
                 </div>
 
+                {% if post['user_id'] == session['user_id'] %}
+                <div class="post-owner-actions">
+                    <a href="{{ url_for('edit_post', post_id=post['id']) }}">
+                        ✏️ Modifier
+                    </a>
+
+                    <form action="{{ url_for('delete_post', post_id=post['id']) }}"
+                          method="POST"
+                          onsubmit="return confirm('Veux-tu vraiment supprimer cette publication ?');">
+                        <button type="submit">🗑️ Supprimer</button>
+                    </form>
+                </div>
+                {% endif %}
+
             </div>
 
             {% if post['content'] %}
@@ -376,56 +382,73 @@
             {% endif %}
 
             <div class="post-stats">
-    <span>👍 {{ post['count_like'] }}</span>
-    <span>❤️ {{ post['count_love'] }}</span>
-    <span>😂 {{ post['count_haha'] }}</span>
-    <span>😮 {{ post['count_wow'] }}</span>
-    <span>😢 {{ post['count_sad'] }}</span>
-    <span>😡 {{ post['count_angry'] }}</span>
-    <strong>· {{ post['like_count'] }} réactions</strong>
-</div>
+                <span>👍 {{ post['count_like'] }}</span>
+                <span>❤️ {{ post['count_love'] }}</span>
+                <span>😂 {{ post['count_haha'] }}</span>
+                <span>😮 {{ post['count_wow'] }}</span>
+                <span>😢 {{ post['count_sad'] }}</span>
+                <span>😡 {{ post['count_angry'] }}</span>
+                <strong>· {{ post['like_count'] }} réactions</strong>
+            </div>
 
-<div class="post-actions">
+            <div class="post-actions">
 
-    <form action="{{ url_for('react', post_id=post['id']) }}"
-          method="POST" class="reaction-form">
+                <form action="{{ url_for('react', post_id=post['id']) }}"
+                      method="POST" class="reaction-form">
 
-        <button type="submit" name="reaction" value="like">
-            👍 J'aime
-        </button>
+                    <button type="submit" name="reaction" value="like">
+                        👍 J'aime
+                    </button>
 
-        <button type="submit" name="reaction" value="love">
-            ❤️ J'adore
-        </button>
+                    <button type="submit" name="reaction" value="love">
+                        ❤️ J'adore
+                    </button>
 
-        <button type="submit" name="reaction" value="haha">
-            😂 Haha
-        </button>
+                    <button type="submit" name="reaction" value="haha">
+                        😂 Haha
+                    </button>
 
-        <button type="submit" name="reaction" value="wow">
-            😮 Waouh
-        </button>
+                    <button type="submit" name="reaction" value="wow">
+                        😮 Waouh
+                    </button>
 
-        <button type="submit" name="reaction" value="sad">
-            😢 Triste
-        </button>
+                    <button type="submit" name="reaction" value="sad">
+                        😢 Triste
+                    </button>
 
-        <button type="submit" name="reaction" value="angry">
-            😡 En colère
-        </button>
+                    <button type="submit" name="reaction" value="angry">
+                        😡 En colère
+                    </button>
 
-        {% if post['user_reaction'] %}
-        <button type="submit" name="reaction" value="remove">
-            Retirer ma réaction
-        </button>
-        {% endif %}
+                    {% if post['user_reaction'] %}
+                    <button type="submit" name="reaction" value="remove">
+                        Retirer ma réaction
+                    </button>
+                    {% endif %}
 
-    </form>
+                </form>
 
-    <a href="#comment-{{ post['id'] }}">💬 Commenter</a>
-    <a href="/profile/{{ post['user_id'] }}">👤 Profil</a>
+                <a href="#comment-{{ post['id'] }}">💬 Commenter</a>
+                <a href="/profile/{{ post['user_id'] }}">👤 Profil</a>
 
-</div>
+            </div>
+
+            <!-- Commentaires de cette publication -->
+            <div class="comments">
+
+                {% for comment in comments %}
+                    {% if comment['post_id'] == post['id'] %}
+
+                        <div class="comment-item">
+                            <strong>{{ comment['username'] }}</strong>
+                            <span>{{ comment['content'] }}</span>
+                            <small>{{ comment['date'] }}</small>
+                        </div>
+
+                    {% endif %}
+                {% endfor %}
+
+            </div>
 
             <form id="comment-{{ post['id'] }}"
                   class="comment-form"
